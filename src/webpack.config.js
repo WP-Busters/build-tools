@@ -218,6 +218,12 @@ export default ({
 													},
 												},
 											],
+											[
+												require.resolve('@babel/plugin-transform-spread'),
+												{
+													loose: true,
+												},
+											],
 											isEnvDevelopment && useReactRefresh && require.resolve('react-refresh/babel'),
 										].filter(Boolean),
 
