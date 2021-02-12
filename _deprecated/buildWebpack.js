@@ -1,5 +1,5 @@
-import webpackConfig from './webpack.config';
 import webpack from 'webpack';
+import webpackConfig from '../src/webpack.config';
 
 // const SpeedMeasurePlugin = require('speed-measure-webpack-plugin');
 // const smp = new SpeedMeasurePlugin();

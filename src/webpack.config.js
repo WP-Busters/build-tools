@@ -1,16 +1,27 @@
 import ReactRefreshWebpackPlugin from '@pmmmwh/react-refresh-webpack-plugin';
+import CssMinimizerPlugin from 'css-minimizer-webpack-plugin';
 import ImageminPlugin from 'imagemin-webpack';
 import { each, find } from 'lodash';
 import MiniCssExtractPlugin from 'mini-css-extract-plugin';
 import path from 'path';
 import postcssNormalize from 'postcss-normalize';
+import TerserPlugin from 'terser-webpack-plugin';
 import webpack from 'webpack';
-import ManifestPlugin from 'webpack-manifest-plugin';
-const TerserPlugin = require('terser-webpack-plugin');
+import { WebpackManifestPlugin } from 'webpack-manifest-plugin';
 const OptimizeCSSAssetsPlugin = require('optimize-css-assets-webpack-plugin');
 const postcssAtroot = require('postcss-atroot');
 const postcssNested = require('postcss-nested');
-const safePostCssParser = require('postcss-safe-parser');
+
+
+const hasJsxRuntime = (() => {
+  try {
+    require.resolve('react/jsx-runtime');
+    return true;
+  } catch (e) {
+    return false;
+  }
+})();
+
 
 const getStyleLoaders = ({
 	isEnvDevelopment,
@@ -117,6 +128,7 @@ export default ({
 			// modules: ['node_modules', path.resolve(watch, 'node_modules')],
 			extensions: ['.tsx', '.ts', '.jsx', '.js', '.json'],
 			alias: {
+				process: require.resolve("process/browser"),
 				//fresh/runtime': require.resolve('react-refresh/runtime'), - do not work (
 				...(isEnvProductionProfile && {
 					'react-dom$': 'react-dom/profiling',
@@ -130,8 +142,6 @@ export default ({
 			path: output,
 			// Add /* filename */ comments to generated require()s in the output.
 			pathinfo: isEnvDevelopment,
-			// TODO: remove this when upgrading to webpack 5
-			futureEmitAssets: true,
 			filename: isEnvProduction ? '[name].[contenthash:8].js' : '[name].js',
 			chunkFilename: isEnvProduction ? '[name].[contenthash:8].chunk.js' : '[name].chunk.js',
 			publicPath: isEnvProduction ? '/' : `https://${host}:${port}/`,
@@ -157,18 +167,22 @@ export default ({
 				{
 					oneOf: [
 						{
-							test: /\.exec\.js$/,
+							test: [/\.exec\.js$/],
 							exclude: /(node_modules|bower_components)/,
 							use: [require.resolve('script-loader')],
 						},
 						{
-							test: /\.(js|mjs|jsx|ts|tsx)$/,
+							test: [/\.(js|mjs|jsx|ts|tsx)$/],
 							include: path.resolve(watch),
 							exclude: /(node_modules|bower_components)/,
 							use: [
 								{
 									loader: require.resolve('babel-loader'),
 									options: {
+										customize: require.resolve(
+											'babel-preset-react-app/webpack-overrides'
+										),
+										
 										babelrc: false,
 										configFile: false,
 
@@ -184,7 +198,12 @@ export default ({
 											// 		modules: false,
 											// 	},
 											// ],
-											require.resolve('babel-preset-react-app'),
+											[
+												require.resolve('babel-preset-react-app'),
+												{
+													runtime: hasJsxRuntime ? 'automatic' : 'classic',
+												},
+											],
 										],
 
 										plugins: [
@@ -244,7 +263,7 @@ export default ({
 							],
 						},
 						{
-							test: /\.css$/,
+							test: [/\.css$/],
 							exclude: /\.module\.css$/,
 							use: getStyleLoaders({
 								watch,
@@ -264,7 +283,7 @@ export default ({
 						},
 
 						{
-							test: /\.postcss$/,
+							test: [/\.postcss$/],
 							use: getStyleLoaders({
 								watch,
 								isEnvDevelopment,
@@ -282,7 +301,7 @@ export default ({
 						},
 
 						{
-							test: /\.less$/,
+							test: [/\.less$/],
 							exclude: /\.module\.less$/,
 							use: [
 								...getStyleLoaders({
@@ -306,7 +325,7 @@ export default ({
 						},
 
 						{
-							test: /\.scss$/,
+							test: [/\.scss$/],
 							exclude: /\.module\.scss$/,
 							use: [
 								...getStyleLoaders({
@@ -331,7 +350,7 @@ export default ({
 						},
 
 						{
-							test: /\.module\.css$/,
+							test: [/\.module\.css$/],
 							use: getStyleLoaders({
 								watch,
 								isEnvDevelopment,
@@ -344,7 +363,7 @@ export default ({
 										mode: 'local',
 										exportGlobals: true,
 										//context: watch,
-										localIdentName: isEnvDevelopment ? '[path][name]__[local]' : '[hash:base64]',
+										localIdentName: isEnvDevelopment ? '[path][name]__[local]' : '[contenthash:base64]',
 									},
 								},
 							}),
@@ -356,7 +375,7 @@ export default ({
 						},
 
 						{
-							test: /\.module\.less$/,
+							test: [/\.module\.less$/],
 							use: [
 								...getStyleLoaders({
 									watch,
@@ -370,7 +389,7 @@ export default ({
 											mode: 'local',
 											exportGlobals: true,
 											//context: watch,
-											localIdentName: isEnvDevelopment ? '[path][name]__[local]' : '[hash:base64]',
+											localIdentName: isEnvDevelopment ? '[path][name]__[local]' : '[contenthash:base64]',
 										},
 									},
 									preProcessor: 'less-loader',
@@ -386,10 +405,10 @@ export default ({
 						},
 
 						{
-							test: /\.svg(\?.*)?$/, // match img.svg and img.svg?param=value
-							issuer: {
-								test: /.less?$/,
-							},
+							test: [/\.svg(\?.*)?$/], // match img.svg and img.svg?param=value
+							issuer: [
+								/.less?$/
+							],
 							use: [
 								require.resolve('url-loader'), // or file-loader or svg-url-loader
 								require.resolve('svg-transform-loader'),
@@ -404,7 +423,7 @@ export default ({
 							// by webpacks internal loaders.
 							exclude: [/\.(js|mjs|jsx|ts|tsx)$/, /\.html$/, /\.json$/],
 							options: {
-								name: 'assets/[name].[hash:8].[ext]',
+								name: 'assets/[name].[contenthash:8].[ext]',
 							},
 						},
 
@@ -431,7 +450,7 @@ export default ({
 					chunkFilename: '[name].[contenthash:8].chunk.css',
 				}),
 
-			new ManifestPlugin({
+			new WebpackManifestPlugin({
 				fileName: 'asset-manifest.json',
 				generate: (seed, files, entrypoints) => {
 					const data = {};
@@ -472,6 +491,10 @@ export default ({
 					},
 				}),
 
+			new webpack.ProvidePlugin({
+					process: require.resolve('process/browser'),
+	 		}),
+
 			new webpack.DefinePlugin({
 				'process.env.WDS_SOCKET_HOST': JSON.stringify(host),
 				'process.env.WDS_SOCKET_PORT': JSON.stringify(port),
@@ -507,16 +530,7 @@ export default ({
 
 		// Some libraries import Node modules but don't use them in the browser.
 		// Tell Webpack to provide empty mocks for them so importing them works.
-		node: {
-			module: 'empty',
-			dgram: 'empty',
-			dns: 'mock',
-			fs: 'empty',
-			http2: 'empty',
-			net: 'empty',
-			tls: 'empty',
-			child_process: 'empty',
-		},
+		
 		// Turn off performance processing because we utilize
 		// our own hints via the FileSizeReporter
 		performance: false,
@@ -540,6 +554,7 @@ export default ({
 			minimizer: [
 				// This is only used in production mode
 				new TerserPlugin({
+					parallel: true,
 					terserOptions: {
 						parse: {
 							// We want terser to parse ecma 8 code. However, we don't want it
@@ -579,17 +594,14 @@ export default ({
 					},
 					sourceMap: false,
 				}),
-				// This is only used in production mode
-				new OptimizeCSSAssetsPlugin({
-					cssProcessorOptions: {
-						parser: safePostCssParser,
-						map: false,
-					},
-					cssProcessorPluginOptions: {
-						preset: ['default', { minifyFontValues: { removeQuotes: false } }],
-					},
-				}),
-			],
+				
+				isEnvProduction && new CssMinimizerPlugin({
+          sourceMap: false,
+          minimizerOptions: {
+            preset: ['default', { minifyFontValues: { removeQuotes: false } }],
+          },
+        }),
+			].filter(Boolean),
 		},
 	};
 };

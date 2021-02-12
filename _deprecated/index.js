@@ -1,11 +1,9 @@
+export { clean } from '../src/clean';
 export { eslintrc } from './eslintrc';
-export { clean } from './clean';
+export { dev, prod, buildWebpack };
+import { buildWebpack } from './buildWebpack';
 import { dev } from './dev';
 import { prod } from './prod';
-import { buildWebpack } from './buildWebpack';
-import { watch as watchFn } from './lib/watch';
-
-export { dev, prod, buildWebpack };
 
 export const build = (sett) => ({
 	dev: dev(sett),

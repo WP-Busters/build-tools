@@ -1,6 +1,6 @@
 import chalk from 'chalk';
+import del from 'del';
 import webpack from 'webpack';
-import { clean } from './clean';
 import { prepareConfig } from './prepareConfig';
 const bfj = require('bfj');
 const formatWebpackMessages = require('react-dev-utils/formatWebpackMessages');
@@ -77,7 +77,7 @@ export const commandBuild = async () => {
 
 	const previousFileSizes = await measureFileSizesBeforeBuild(config.output);
 
-	await clean([config.output]);
+	await del([config.output]);
 
 	build(config, webPackConfig, previousFileSizes)
 		.then(

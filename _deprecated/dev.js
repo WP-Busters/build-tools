@@ -1,18 +1,16 @@
-import { src, dest } from 'gulp';
+import fg from 'fast-glob';
+import { dest, src } from 'gulp';
 import rename from 'gulp-rename';
-import path from 'path';
-import fs from 'fs';
+import { isFunction } from 'lodash';
 // import prettier from 'prettier';
 import blessed from 'neo-blessed';
-import fg from 'fast-glob';
-import { isFunction, each } from 'lodash';
-import { clean as cleanFn, buildWebpack } from './';
+import path from 'path';
+import { buildWebpack, clean as cleanFn } from '.';
+import { lintTs } from '../src/lib/lintTs';
 // import named from 'vinyl-named';
 // import { create } from 'browser-sync';
 import { setName } from './lib/setName';
-import { watchAll, watch as watchFn } from './lib/watch';
-import { lintTs } from './lib/lintTs';
-import { readFile } from 'fs';
+import { watch as watchFn, watchAll } from './lib/watch';
 
 // const browserSync = create();
 

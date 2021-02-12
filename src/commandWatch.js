@@ -1,8 +1,8 @@
 import chalk from 'chalk';
+import del from 'del';
 import ignoredFiles from 'react-dev-utils/ignoredFiles';
 import webpack from 'webpack';
 import WebpackDevServer from 'webpack-dev-server';
-import { clean } from './clean';
 import { prepareConfig } from './prepareConfig';
 const formatWebpackMessages = require('react-dev-utils/formatWebpackMessages');
 const clearConsole = require('react-dev-utils/clearConsole');
@@ -105,12 +105,11 @@ export const commandWatch = async () => {
 		// useReactRefresh: true,
 	});
 
-	await clean([config.output]);
+	await del([config.output]);
 
 	const compiler = creataComplier(webPackConfig);
 	const serverConfig = {
 		writeToDisk: (filePath) => {
-			//console.log(filePath);
 			return /.*(?<!hot-update)\.(css|js|gif|jpe?g|png|txt|json)(\.map)?$/.test(filePath);
 		},
 		disableHostCheck: true,
@@ -164,7 +163,7 @@ export const commandWatch = async () => {
 	// 	await buildWebpackTask();
 	// });
 
-	console.log({ config });
+	// console.log({ config });
 
 	// await Promise.all([buildWebpackTask()]);
 };
