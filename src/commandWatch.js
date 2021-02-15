@@ -1,13 +1,15 @@
 import chalk from 'chalk';
+import cors from 'cors';
 import del from 'del';
-import ignoredFiles from 'react-dev-utils/ignoredFiles';
+import { mapValues } from 'lodash';
 import webpack from 'webpack';
 import WebpackDevServer from 'webpack-dev-server';
 import { prepareConfig } from './prepareConfig';
-const formatWebpackMessages = require('react-dev-utils/formatWebpackMessages');
-const clearConsole = require('react-dev-utils/clearConsole');
+import { clearConsole } from './utils';
+const errorOverlayMiddleware = require('react-dev-utils/errorOverlayMiddleware');
+const formatWebpackMessages = require('./formatWebpackMessages');
 
-const cwd = process.cwd();
+// const cwd = process.cwd();
 
 const creataComplier = (config) => {
 	// "Compiler" is a low-level interface to webpack.
@@ -43,7 +45,7 @@ const creataComplier = (config) => {
 	// Whether or not you have warnings or errors, you will get this event.
 	compiler.hooks.done.tap('done', async (stats) => {
 		if (isInteractive) {
-			// clearConsole();
+			clearConsole();
 		}
 
 		// We have switched off the default webpack output in WebpackDevServer
@@ -83,16 +85,6 @@ const creataComplier = (config) => {
 		if (messages.warnings.length) {
 			console.log(chalk.yellow('Compiled with warnings.\n'));
 			console.log(messages.warnings.join('\n\n'));
-
-			// Teach some ESLint tricks.
-			console.log(
-				'\nSearch for the ' +
-					chalk.underline(chalk.yellow('keywords')) +
-					' to learn more about each warning.',
-			);
-			console.log(
-				'To ignore, add ' + chalk.cyan('// eslint-disable-next-line') + ' to the line before.\n',
-			);
 		}
 	});
 
@@ -100,11 +92,17 @@ const creataComplier = (config) => {
 };
 
 export const commandWatch = async () => {
+	process.env.NODE_ENV = 'development';
+	
 	const { config, webPackConfig } = prepareConfig({
 		isEnvProduction: false,
 		// useReactRefresh: true,
 	});
 
+	webPackConfig.entry = mapValues(webPackConfig.entry, (p) => [require.resolve('react-refresh/runtime'), p]);
+	// webPackConfig.entry = mapValues(webPackConfig.entry, (p) => [p, require.resolve('react-refresh/runtime')]);
+	// console.log(webPackConfig.entry);
+	
 	await del([config.output]);
 
 	const compiler = creataComplier(webPackConfig);
@@ -133,11 +131,23 @@ export const commandWatch = async () => {
 		overlay: false,
 		clientLogLevel: 'none',
 		watchOptions: {
-			ignored: ignoredFiles(config.watch),
+			ignored: /node_modules/,
 		},
-		headers: {
-			'Access-Control-Allow-Origin': '*',
-		},
+		// headers: {
+		// 	'Access-Control-Allow-Origin': '*',
+		// 	"Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, PATCH, OPTIONS",
+    // 	"Access-Control-Allow-Headers": "X-Requested-With, content-type, Authorization"
+		// },
+		
+		before(app, server) {
+			app.use(cors());
+      // Keep `evalSourceMapMiddleware` and `errorOverlayMiddleware`
+      // middlewares before `redirectServedPath` otherwise will not have any effect
+      // This lets us fetch source contents from webpack for the error overlay
+      // app.use(evalSourceMapMiddleware(server));
+      // This lets us open files from the runtime error overlay.
+      app.use(errorOverlayMiddleware());
+    },
 	};
 
 	const devServer = new WebpackDevServer(compiler, serverConfig);

@@ -8,14 +8,14 @@ import postcssNormalize from 'postcss-normalize';
 import TerserPlugin from 'terser-webpack-plugin';
 import webpack from 'webpack';
 import { WebpackManifestPlugin } from 'webpack-manifest-plugin';
-const OptimizeCSSAssetsPlugin = require('optimize-css-assets-webpack-plugin');
 const postcssAtroot = require('postcss-atroot');
 const postcssNested = require('postcss-nested');
+const ESLintPlugin = require('eslint-webpack-plugin');
 
 
-const hasJsxRuntime = (() => {
+const checkHasJsxRuntime = ((path = '') => {
   try {
-    require.resolve('react/jsx-runtime');
+    require.resolve(path + 'react/jsx-runtime');
     return true;
   } catch (e) {
     return false;
@@ -113,8 +113,12 @@ export default ({
 	useReactRefresh,
 	host,
 	port,
+	builderRoot,
+	projectRoot,
+	disableESLintPlugin,
 }) => {
 	const isEnvDevelopment = !isEnvProduction;
+	const hasJsxRuntime = () => checkHasJsxRuntime(projectRoot + '/');
 
 	return {
 		target: 'web',
@@ -129,7 +133,7 @@ export default ({
 			extensions: ['.tsx', '.ts', '.jsx', '.js', '.json'],
 			alias: {
 				process: require.resolve("process/browser"),
-				//fresh/runtime': require.resolve('react-refresh/runtime'), - do not work (
+				//react-fresh/runtime': require.resolve('react-refresh/runtime'), - do not work (
 				...(isEnvProductionProfile && {
 					'react-dom$': 'react-dom/profiling',
 					'scheduler/tracing': 'scheduler/tracing-profiling',
@@ -478,16 +482,22 @@ export default ({
 			isEnvDevelopment &&
 				useReactRefresh &&
 				new ReactRefreshWebpackPlugin({
+					exclude: [/node_modules/],
 					overlay: {
-						entry: require.resolve('react-dev-utils/webpackHotDevClient'),
+						// entry: require.resolve('@pmmmwh/react-refresh-webpack-plugin/client/ErrorOverlayEntry'),
+  					// module: require.resolve('@pmmmwh/react-refresh-webpack-plugin/overlay'),
+						
+						entry: require.resolve('./webpackHotDevClient'),
+						// entry: require.resolve('react-dev-utils/webpackHotDevClient'),
 						// The expected exports are slightly different from what the overlay exports,
 						// so an interop is included here to enable feedback on module-level errors.
 						// module: require.resolve('react-dev-utils/refreshOverlayInterop'),
 						// Since we ship a custom dev client and overlay integration,
 						// the bundled socket handling logic can be eliminated.
-						sockIntegration: false,
-						// sockHost: host,
-						// sockPort: port,
+						// sockIntegration: false,
+						sockIntegration: 'wds',
+						sockHost: host,
+						sockPort: port,
 					},
 				}),
 
@@ -496,6 +506,7 @@ export default ({
 	 		}),
 
 			new webpack.DefinePlugin({
+				'process.env.NODE_ENV': JSON.stringify(process.env.NODE_ENV),
 				'process.env.WDS_SOCKET_HOST': JSON.stringify(host),
 				'process.env.WDS_SOCKET_PORT': JSON.stringify(port),
 				__RSUITE_CLASSNAME_PREFIX__: JSON.stringify('bust-'),
@@ -524,6 +535,34 @@ export default ({
 							},
 						],
 					],
+				},
+			}),
+			
+			!disableESLintPlugin && new ESLintPlugin({
+				extensions: ['js', 'mjs', 'jsx', 'ts', 'tsx'],
+				formatter: require.resolve('eslint-formatter-pretty'),
+				eslintPath: require.resolve('eslint'),
+				emitWarning: isEnvDevelopment,
+				context: watch,
+				failOnError: true,
+				failOnWarning: false,
+				cache: true,
+				cacheLocation: path.resolve(
+					projectRoot,
+					'node_modules',
+					'.cache/.eslintcache'
+				),
+				// ESLint class options
+				cwd: projectRoot,
+				resolvePluginsRelativeTo: builderRoot,
+				baseConfig: {
+					extends: [require.resolve('eslint-config-react-app/index')],
+					// extends: [require.resolve('eslint-config-react-app/base')],
+					rules: {
+						...(!hasJsxRuntime && {
+							'react/react-in-jsx-scope': 'error',
+						}),
+					},
 				},
 			}),
 		].filter(Boolean),

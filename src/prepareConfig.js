@@ -15,6 +15,7 @@ export const prepareConfig = (c) => {
 		isEnvProduction: false,
 		isEnvProductionProfile: false,
 		useReactRefresh: true,
+		disableESLintPlugin: false,
 		...(c || {}),
 		...userConfig,
 	};
@@ -24,6 +25,7 @@ export const prepareConfig = (c) => {
 	config.output = projectFile(config.output);
 	config.watch = projectFile(config.watch);
 	config.projectRoot = projectFile(config.projectRoot);
+	config.builderRoot = __dirname;
 	config.entry = mapValues(config.entry, (p) => projectFile(p));
 
 	if (config.isEnvProduction) {

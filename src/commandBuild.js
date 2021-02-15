@@ -3,7 +3,7 @@ import del from 'del';
 import webpack from 'webpack';
 import { prepareConfig } from './prepareConfig';
 const bfj = require('bfj');
-const formatWebpackMessages = require('react-dev-utils/formatWebpackMessages');
+const formatWebpackMessages = require('./formatWebpackMessages');
 const FileSizeReporter = require('react-dev-utils/FileSizeReporter');
 const printBuildError = require('react-dev-utils/printBuildError');
 
@@ -85,16 +85,6 @@ export const commandBuild = async () => {
 				if (warnings.length) {
 					console.log(chalk.yellow('Compiled with warnings.\n'));
 					console.log(warnings.join('\n\n'));
-					console.log(
-						'\nSearch for the ' +
-							chalk.underline(chalk.yellow('keywords')) +
-							' to learn more about each warning.',
-					);
-					console.log(
-						'To ignore, add ' +
-							chalk.cyan('// eslint-disable-next-line') +
-							' to the line before.\n',
-					);
 				} else {
 					console.log(chalk.green('Compiled successfully.\n'));
 				}
@@ -108,8 +98,6 @@ export const commandBuild = async () => {
 					WARN_AFTER_CHUNK_GZIP_SIZE,
 				);
 				console.log();
-
-				//printHostingInstructions(appPackage, publicUrl, publicPath, buildFolder, useYarn);
 			},
 			(err) => {
 				console.log(chalk.red('Failed to compile.\n'));
