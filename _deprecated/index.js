@@ -1,9 +1,9 @@
 export { clean } from '../src/clean';
-export { eslintrc } from './eslintrc';
+export { eslintrc } from '../src/eslintrc';
 export { dev, prod, buildWebpack };
-import { buildWebpack } from './buildWebpack';
-import { dev } from './dev';
-import { prod } from './prod';
+	import { buildWebpack } from './buildWebpack';
+	import { dev } from './dev';
+	import { prod } from './prod';
 
 export const build = (sett) => ({
 	dev: dev(sett),

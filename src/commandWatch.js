@@ -1,7 +1,6 @@
 import chalk from 'chalk';
 import cors from 'cors';
 import del from 'del';
-import { mapValues } from 'lodash';
 import webpack from 'webpack';
 import WebpackDevServer from 'webpack-dev-server';
 import { prepareConfig } from './prepareConfig';
@@ -9,9 +8,7 @@ import { clearConsole } from './utils';
 const errorOverlayMiddleware = require('react-dev-utils/errorOverlayMiddleware');
 const formatWebpackMessages = require('./formatWebpackMessages');
 
-// const cwd = process.cwd();
-
-const creataComplier = (config) => {
+const createComplier = (config) => {
 	// "Compiler" is a low-level interface to webpack.
 	// It lets us listen to some events and provide our own custom messages.
 	let compiler;
@@ -30,23 +27,15 @@ const creataComplier = (config) => {
 	// bundle, so if you refresh, it'll wait instead of serving the old one.
 	// "invalid" is short for "bundle invalidated", it doesn't imply any errors.
 	compiler.hooks.invalid.tap('invalid', () => {
-		if (isInteractive) {
-			clearConsole();
-		}
+		clearConsole();
+
 		console.log('Compiling...');
 	});
-
-	let isFirstCompile = true;
-	let isInteractive = true;
-	let tsMessagesPromise;
-	let tsMessagesResolver;
 
 	// "done" event fires when webpack has finished recompiling the bundle.
 	// Whether or not you have warnings or errors, you will get this event.
 	compiler.hooks.done.tap('done', async (stats) => {
-		if (isInteractive) {
-			clearConsole();
-		}
+		clearConsole();
 
 		// We have switched off the default webpack output in WebpackDevServer
 		// options so we are going to "massage" the warnings and errors and present
@@ -64,10 +53,6 @@ const creataComplier = (config) => {
 		if (isSuccessful) {
 			console.log(chalk.green('Compiled successfully!'));
 		}
-		if (isSuccessful && (isInteractive || isFirstCompile)) {
-			//printInstructions(appName, urls, useYarn);
-		}
-		isFirstCompile = false;
 
 		// If errors exist, only show errors.
 		if (messages.errors.length) {
@@ -93,26 +78,24 @@ const creataComplier = (config) => {
 
 export const commandWatch = async () => {
 	process.env.NODE_ENV = 'development';
-	
+
 	const { config, webPackConfig } = prepareConfig({
 		isEnvProduction: false,
 		// useReactRefresh: true,
 	});
 
-	webPackConfig.entry = mapValues(webPackConfig.entry, (p) => [require.resolve('react-refresh/runtime'), p]);
-	// webPackConfig.entry = mapValues(webPackConfig.entry, (p) => [p, require.resolve('react-refresh/runtime')]);
-	// console.log(webPackConfig.entry);
-	
+	//webPackConfig.entry = mapValues(webPackConfig.entry, (p) => [require.resolve('react-refresh/runtime'), p]);
+
 	await del([config.output]);
 
-	const compiler = creataComplier(webPackConfig);
+	const compiler = createComplier(webPackConfig);
 	const serverConfig = {
 		writeToDisk: (filePath) => {
 			return /.*(?<!hot-update)\.(css|js|gif|jpe?g|png|txt|json)(\.map)?$/.test(filePath);
 		},
 		disableHostCheck: true,
 		compress: true,
-		hot: true,
+		hot: config.hot,
 
 		sockHost: config.host,
 		sockPort: config.port,
@@ -131,23 +114,18 @@ export const commandWatch = async () => {
 		overlay: false,
 		clientLogLevel: 'none',
 		watchOptions: {
-			ignored: /node_modules/,
+			ignored: /node_modules|.astroturf/,
 		},
-		// headers: {
-		// 	'Access-Control-Allow-Origin': '*',
-		// 	"Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, PATCH, OPTIONS",
-    // 	"Access-Control-Allow-Headers": "X-Requested-With, content-type, Authorization"
-		// },
-		
+
 		before(app, server) {
 			app.use(cors());
-      // Keep `evalSourceMapMiddleware` and `errorOverlayMiddleware`
-      // middlewares before `redirectServedPath` otherwise will not have any effect
-      // This lets us fetch source contents from webpack for the error overlay
-      // app.use(evalSourceMapMiddleware(server));
-      // This lets us open files from the runtime error overlay.
-      app.use(errorOverlayMiddleware());
-    },
+			// Keep `evalSourceMapMiddleware` and `errorOverlayMiddleware`
+			// middlewares before `redirectServedPath` otherwise will not have any effect
+			// This lets us fetch source contents from webpack for the error overlay
+			// app.use(evalSourceMapMiddleware(server));
+			// This lets us open files from the runtime error overlay.
+			app.use(errorOverlayMiddleware());
+		},
 	};
 
 	const devServer = new WebpackDevServer(compiler, serverConfig);
@@ -155,9 +133,8 @@ export const commandWatch = async () => {
 		if (err) {
 			return console.log(err);
 		}
-		// if (isInteractive) {
+
 		// 	clearConsole();
-		// }
 
 		console.log(chalk.cyan('Starting the development server...\n'));
 	});
@@ -168,12 +145,4 @@ export const commandWatch = async () => {
 			process.exit();
 		});
 	});
-
-	// watchFn(config.watch, async () => {
-	// 	await buildWebpackTask();
-	// });
-
-	// console.log({ config });
-
-	// await Promise.all([buildWebpackTask()]);
 };

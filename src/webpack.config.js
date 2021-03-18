@@ -4,24 +4,51 @@ import ImageminPlugin from 'imagemin-webpack';
 import { each, find } from 'lodash';
 import MiniCssExtractPlugin from 'mini-css-extract-plugin';
 import path from 'path';
-import postcssNormalize from 'postcss-normalize';
 import TerserPlugin from 'terser-webpack-plugin';
 import webpack from 'webpack';
 import { WebpackManifestPlugin } from 'webpack-manifest-plugin';
-const postcssAtroot = require('postcss-atroot');
-const postcssNested = require('postcss-nested');
 const ESLintPlugin = require('eslint-webpack-plugin');
 
-
 const checkHasJsxRuntime = ((path = '') => {
-  try {
-    require.resolve(path + 'react/jsx-runtime');
-    return true;
-  } catch (e) {
-    return false;
-  }
+	try {
+		require.resolve(path + 'react/jsx-runtime');
+		return true;
+	} catch (e) {
+		return false;
+	}
 })();
 
+class RuntimePublicPath {
+	constructor(settings) {
+		this._publicPath = settings.publicPath;
+	}
+	apply(compiler) {
+		const _publicPath = this._publicPath;
+
+		if (!_publicPath) {
+			return;
+		}
+
+		const _name = 'RuntimePublicPath';
+
+		function updatePublicPath(source) {
+			var newSource = [];
+			newSource.push(source);
+			// newSource.push('(() => {');
+			newSource.push(' __webpack_require__.p = ' + _publicPath + ';');
+			// newSource.push(' __webpack_public_path__ = ' + _publicPath + ';');
+			// newSource.push('})();');
+
+			return newSource.join('\n');
+		}
+
+		compiler.hooks.thisCompilation.tap(_name, function (compilation) {
+			compilation.mainTemplate.hooks.requireExtensions.tap(_name, function (source, chunk, hash) {
+				return updatePublicPath(source);
+			});
+		});
+	}
+}
 
 const getStyleLoaders = ({
 	isEnvDevelopment,
@@ -32,11 +59,16 @@ const getStyleLoaders = ({
 	watch,
 }) => {
 	const loaders = [
-		isEnvDevelopment && require.resolve('style-loader'),
+		isEnvDevelopment && {
+			loader: require.resolve('style-loader'),
+			options: {
+				esModule: true,
+			},
+		},
 		!isEnvDevelopment && {
 			loader: MiniCssExtractPlugin.loader,
 			options: {
-				esModule: false,
+				esModule: true,
 			},
 		},
 		{
@@ -49,33 +81,34 @@ const getStyleLoaders = ({
 			// package.json
 			loader: require.resolve('postcss-loader'),
 			options: {
-				// Necessary for external CSS imports to work
-				// https://github.com/facebook/create-react-app/issues/2677
-				ident: 'postcss',
-				plugins: () => {
-					const p = [
-						postcssNested(),
-						postcssAtroot(),
-						require('postcss-move-props-to-bg-image-query'), // svg-transform-loader
-						require('postcss-flexbugs-fixes'),
-						require('postcss-preset-env')({
-							autoprefixer: {
-								flexbox: 'no-2009',
-							},
-							stage: 3,
-						}),
-
-						require('postcss-short'),
-						require('postcss-hexrgba'),
-						// Adds PostCSS Normalize as the reset css with default options,
-						// so that it honors browserslist config in package.json
-						// which in turn let's users customize the target behavior as per their needs.
-						postcssNormalize(),
-
-						...postCssPlugins,
-					];
-
-					return p;
+				postcssOptions: {
+					config: false,
+					// Necessary for external CSS imports to work
+					// https://github.com/facebook/create-react-app/issues/2677
+					ident: 'postcss',
+					plugins: (() => {
+						const p = [
+							require('postcss-nested'),
+							require('postcss-atroot')(),
+							require('postcss-move-props-to-bg-image-query'), // svg-transform-loader
+							require('postcss-flexbugs-fixes'),
+							require('postcss-preset-env')({
+								autoprefixer: {
+									flexbox: 'no-2009',
+								},
+								stage: 3,
+							}),
+							require('postcss-short'),
+							require('postcss-hexrgba'),
+							// Adds PostCSS Normalize as the reset css with default options,
+							// so that it honors browserslist config in package.json
+							// which in turn let's users customize the target behavior as per their needs.
+							require('postcss-normalize')(),
+							...postCssPlugins,
+						];
+						// console.log(p);
+						return p;
+					})(),
 				},
 				sourceMap: isEnvDevelopment,
 			},
@@ -116,6 +149,9 @@ export default ({
 	builderRoot,
 	projectRoot,
 	disableESLintPlugin,
+	runtimePublicPath,
+	usePreact,
+	hot,
 }) => {
 	const isEnvDevelopment = !isEnvProduction;
 	const hasJsxRuntime = () => checkHasJsxRuntime(projectRoot + '/');
@@ -132,8 +168,14 @@ export default ({
 			// modules: ['node_modules', path.resolve(watch, 'node_modules')],
 			extensions: ['.tsx', '.ts', '.jsx', '.js', '.json'],
 			alias: {
-				process: require.resolve("process/browser"),
-				//react-fresh/runtime': require.resolve('react-refresh/runtime'), - do not work (
+				...(usePreact
+					? {
+							react: 'preact/compat',
+							'react-dom': 'preact/compat',
+					  }
+					: {}),
+
+				process: require.resolve('process/browser'),
 				...(isEnvProductionProfile && {
 					'react-dom$': 'react-dom/profiling',
 					'scheduler/tracing': 'scheduler/tracing-profiling',
@@ -172,21 +214,19 @@ export default ({
 					oneOf: [
 						{
 							test: [/\.exec\.js$/],
-							exclude: /(node_modules|bower_components)/,
+							exclude: /(node_modules)/,
 							use: [require.resolve('script-loader')],
 						},
 						{
 							test: [/\.(js|mjs|jsx|ts|tsx)$/],
-							include: path.resolve(watch),
-							exclude: /(node_modules|bower_components)/,
+							include: [path.resolve(watch), /node_modules\/react-popper/],
+							// exclude: /node_modules/,
 							use: [
 								{
 									loader: require.resolve('babel-loader'),
 									options: {
-										customize: require.resolve(
-											'babel-preset-react-app/webpack-overrides'
-										),
-										
+										// customize: require.resolve('babel-preset-react-app/webpack-overrides'),
+
 										babelrc: false,
 										configFile: false,
 
@@ -211,7 +251,7 @@ export default ({
 										],
 
 										plugins: [
-											require.resolve('@babel/plugin-transform-modules-commonjs'),
+											//require.resolve('@babel/plugin-transform-modules-commonjs'),
 											require.resolve('@reatom/babel-plugin'),
 											// require.resolve('babel-plugin-styled-components'),
 											[
@@ -221,6 +261,24 @@ export default ({
 														transform: 'lodash/${member}',
 														preventFullImport: true,
 													},
+													['react-use']: {
+														transform: 'react-use/lib/${member}',
+														preventFullImport: true,
+													},
+													['react-transition-group']: {
+														transform: 'react-transition-group/esm/${member}',
+														preventFullImport: true,
+													},
+													['@popperjs/core']: {
+														transform: '@popperjs/core/lib/popper-lite',
+														skipDefaultConversion: true,
+														preventFullImport: true,
+													},
+													['react-popper']: {
+														transform: 'react-popper/lib/esm/${member}',
+														skipDefaultConversion: true,
+														preventFullImport: true,
+													},
 													rsuite: {
 														transform: 'rsuite/lib/${member}',
 														preventFullImport: true,
@@ -228,16 +286,6 @@ export default ({
 													['lodash-es']: {
 														transform: 'lodash/${member}',
 														preventFullImport: true,
-													},
-												},
-											],
-											[
-												require.resolve('babel-plugin-named-asset-import'),
-												{
-													loaderMap: {
-														svg: {
-															ReactComponent: '@svgr/webpack?-svgo,+titleProp,+ref![path]',
-														},
 													},
 												},
 											],
@@ -261,7 +309,17 @@ export default ({
 								{
 									loader: require.resolve('astroturf/loader'),
 									options: {
-										extension: '.module.css',
+										extension: '.astroturf',
+										// writeFiles: true,
+										// getFileName(hostFilePath, pluginsOptions) {
+										// 	// const basepath = join(
+										// 	// 	dirname(hostFilePath),
+										// 	// 	basename(hostFilePath, extname(hostFilePath)),
+										// 	// );
+										// 	const basepath =
+										// 		'/Users/dk/Mine/sites/wp-image-directory3/email-builder/client/';
+										// 	return `${basepath}__extracted_style.astroturf`;
+										// },
 									},
 								},
 							],
@@ -367,7 +425,34 @@ export default ({
 										mode: 'local',
 										exportGlobals: true,
 										//context: watch,
-										localIdentName: isEnvDevelopment ? '[path][name]__[local]' : '[contenthash:base64]',
+										localIdentName: isEnvDevelopment ? '[path][name]__[local]' : '[hash:base64]',
+									},
+								},
+							}),
+							// Don't consider CSS imports dead code even if the
+							// containing package claims to have no side effects.
+							// Remove this when webpack adds a warning or an error for this.
+							// See https://github.com/webpack/webpack/issues/6571
+							sideEffects: true,
+						},
+
+						{
+							test: [/\.astroturf$/],
+							use: getStyleLoaders({
+								watch,
+								isEnvDevelopment,
+								isEnvProduction,
+								cssOptions: {
+									importLoaders: 1,
+									sourceMap: isEnvDevelopment,
+
+									modules: {
+										compileType: 'module',
+										// compileType: 'icss',
+										mode: 'local',
+										exportGlobals: true,
+										// //context: watch,
+										localIdentName: isEnvDevelopment ? '[path][name]__[local]' : '[hash:base64]',
 									},
 								},
 							}),
@@ -393,7 +478,7 @@ export default ({
 											mode: 'local',
 											exportGlobals: true,
 											//context: watch,
-											localIdentName: isEnvDevelopment ? '[path][name]__[local]' : '[contenthash:base64]',
+											localIdentName: isEnvDevelopment ? '[path][name]__[local]' : '[hash:base64]',
 										},
 									},
 									preProcessor: 'less-loader',
@@ -407,12 +492,22 @@ export default ({
 							// See https://github.com/webpack/webpack/issues/6571
 							sideEffects: true,
 						},
-
+						{
+							test: [/\.svg$/],
+							use: [
+								{
+									loader: require.resolve('@svgr/webpack'),
+									options: {
+										titleProp: true,
+										svgo: false,
+									},
+								},
+								require.resolve('url-loader'),
+							],
+						},
 						{
 							test: [/\.svg(\?.*)?$/], // match img.svg and img.svg?param=value
-							issuer: [
-								/.less?$/
-							],
+							issuer: [/.less?$/],
 							use: [
 								require.resolve('url-loader'), // or file-loader or svg-url-loader
 								require.resolve('svg-transform-loader'),
@@ -477,7 +572,7 @@ export default ({
 				},
 			}),
 
-			isEnvDevelopment && new webpack.HotModuleReplacementPlugin(),
+			isEnvDevelopment && hot && new webpack.HotModuleReplacementPlugin(),
 
 			isEnvDevelopment &&
 				useReactRefresh &&
@@ -485,8 +580,8 @@ export default ({
 					exclude: [/node_modules/],
 					overlay: {
 						// entry: require.resolve('@pmmmwh/react-refresh-webpack-plugin/client/ErrorOverlayEntry'),
-  					// module: require.resolve('@pmmmwh/react-refresh-webpack-plugin/overlay'),
-						
+						// module: require.resolve('@pmmmwh/react-refresh-webpack-plugin/overlay'),
+
 						entry: require.resolve('./webpackHotDevClient'),
 						// entry: require.resolve('react-dev-utils/webpackHotDevClient'),
 						// The expected exports are slightly different from what the overlay exports,
@@ -502,8 +597,8 @@ export default ({
 				}),
 
 			new webpack.ProvidePlugin({
-					process: require.resolve('process/browser'),
-	 		}),
+				process: require.resolve('process/browser'),
+			}),
 
 			new webpack.DefinePlugin({
 				'process.env.NODE_ENV': JSON.stringify(process.env.NODE_ENV),
@@ -537,58 +632,48 @@ export default ({
 					],
 				},
 			}),
-			
-			!disableESLintPlugin && new ESLintPlugin({
-				extensions: ['js', 'mjs', 'jsx', 'ts', 'tsx'],
-				formatter: require.resolve('eslint-formatter-pretty'),
-				eslintPath: require.resolve('eslint'),
-				emitWarning: isEnvDevelopment,
-				context: watch,
-				failOnError: true,
-				failOnWarning: false,
-				cache: true,
-				cacheLocation: path.resolve(
-					projectRoot,
-					'node_modules',
-					'.cache/.eslintcache'
-				),
-				// ESLint class options
-				cwd: projectRoot,
-				resolvePluginsRelativeTo: builderRoot,
-				baseConfig: {
-					extends: [require.resolve('eslint-config-react-app/index')],
-					// extends: [require.resolve('eslint-config-react-app/base')],
-					rules: {
-						...(!hasJsxRuntime && {
-							'react/react-in-jsx-scope': 'error',
-						}),
+
+			!disableESLintPlugin &&
+				new ESLintPlugin({
+					extensions: ['js', 'mjs', 'jsx', 'ts', 'tsx'],
+					formatter: require.resolve('eslint-formatter-pretty'),
+					eslintPath: require.resolve('eslint'),
+					emitWarning: isEnvDevelopment,
+					context: watch,
+					failOnError: true,
+					failOnWarning: false,
+					// cache: true,
+					// cacheLocation: path.resolve(projectRoot, 'node_modules', '.cache/.eslintcache'),
+					// ESLint class options
+					cwd: projectRoot,
+					resolvePluginsRelativeTo: builderRoot,
+					baseConfig: {
+						extends: [require.resolve('./eslintrc.js')],
+						// extends: [require.resolve('eslint-config-react-app/base')],
+						rules: {
+							...(!hasJsxRuntime && {
+								'react/react-in-jsx-scope': 'error',
+							}),
+						},
 					},
-				},
-			}),
+				}),
+
+			isEnvProduction &&
+				runtimePublicPath &&
+				new RuntimePublicPath({
+					publicPath: runtimePublicPath,
+				}),
 		].filter(Boolean),
 
 		// Some libraries import Node modules but don't use them in the browser.
 		// Tell Webpack to provide empty mocks for them so importing them works.
-		
+
 		// Turn off performance processing because we utilize
 		// our own hints via the FileSizeReporter
 		performance: false,
 
 		optimization: {
 			minimize: isEnvProduction,
-
-			splitChunks: {
-				chunks: 'async',
-				maxAsyncRequests: 6,
-				maxInitialRequests: 4,
-				cacheGroups: {
-					commons: {
-						test: /[\\/]node_modules[\\/]/,
-						name: 'vendors',
-						chunks: 'all',
-					},
-				},
-			},
 
 			minimizer: [
 				// This is only used in production mode
@@ -633,13 +718,14 @@ export default ({
 					},
 					sourceMap: false,
 				}),
-				
-				isEnvProduction && new CssMinimizerPlugin({
-          sourceMap: false,
-          minimizerOptions: {
-            preset: ['default', { minifyFontValues: { removeQuotes: false } }],
-          },
-        }),
+
+				isEnvProduction &&
+					new CssMinimizerPlugin({
+						sourceMap: false,
+						minimizerOptions: {
+							preset: ['default', { minifyFontValues: { removeQuotes: false } }],
+						},
+					}),
 			].filter(Boolean),
 		},
 	};

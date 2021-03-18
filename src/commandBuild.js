@@ -1,23 +1,17 @@
 import chalk from 'chalk';
 import del from 'del';
+import { measureFileSizesBeforeBuild, printFileSizesAfterBuild } from 'react-dev-utils/FileSizeReporter';
 import webpack from 'webpack';
 import { prepareConfig } from './prepareConfig';
 const bfj = require('bfj');
 const formatWebpackMessages = require('./formatWebpackMessages');
-const FileSizeReporter = require('react-dev-utils/FileSizeReporter');
 const printBuildError = require('react-dev-utils/printBuildError');
-
-const measureFileSizesBeforeBuild = FileSizeReporter.measureFileSizesBeforeBuild;
-const printFileSizesAfterBuild = FileSizeReporter.printFileSizesAfterBuild;
-
-// These sizes are pretty large. We'll warn for bundles exceeding them.
-const WARN_AFTER_BUNDLE_GZIP_SIZE = 512 * 1024;
-const WARN_AFTER_CHUNK_GZIP_SIZE = 1024 * 1024;
 
 function build(config, configW, previousFileSizes) {
 	console.log('Creating an optimized production build...');
 
 	const compiler = webpack(configW);
+
 	return new Promise((resolve, reject) => {
 		compiler.run((err, stats) => {
 			let messages;
@@ -94,8 +88,8 @@ export const commandBuild = async () => {
 					stats,
 					previousFileSizes,
 					config.output,
-					WARN_AFTER_BUNDLE_GZIP_SIZE,
-					WARN_AFTER_CHUNK_GZIP_SIZE,
+					512 * 1024,
+					1024 * 1024,
 				);
 				console.log();
 			},
