@@ -455,6 +455,11 @@ export default ({
 										localIdentName: isEnvDevelopment ? '[path][name]__[local]' : '[hash:base64]',
 									},
 								},
+
+								preProcessor: 'sass-loader',
+								preOptions: {
+									implementation: require('sass'),
+								},
 							}),
 							// Don't consider CSS imports dead code even if the
 							// containing package claims to have no side effects.
@@ -677,6 +682,7 @@ export default ({
 
 			minimizer: [
 				// This is only used in production mode
+				// false &&
 				new TerserPlugin({
 					parallel: true,
 					terserOptions: {
