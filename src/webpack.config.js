@@ -172,6 +172,7 @@ export default ({
 					? {
 							react: 'preact/compat',
 							'react-dom': 'preact/compat',
+							scheduler: false,
 					  }
 					: {}),
 
@@ -219,7 +220,11 @@ export default ({
 						},
 						{
 							test: [/\.(js|mjs|jsx|ts|tsx)$/],
-							include: [path.resolve(watch), /node_modules\/react-popper/],
+							include: [
+								path.resolve(watch),
+								/node_modules\/react-popper/,
+								/node_modules\/.+\.(jsx|ts|tsx)$/,
+							],
 							// exclude: /node_modules/,
 							use: [
 								{
