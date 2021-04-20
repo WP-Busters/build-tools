@@ -8,6 +8,7 @@ import TerserPlugin from 'terser-webpack-plugin';
 import webpack from 'webpack';
 import { WebpackManifestPlugin } from 'webpack-manifest-plugin';
 const ESLintPlugin = require('eslint-webpack-plugin');
+const { extendDefaultPlugins } = require('svgo');
 
 const checkHasJsxRuntime = ((path = '') => {
 	try {
@@ -632,11 +633,7 @@ export default ({
 						[
 							'svgo',
 							{
-								plugins: [
-									{
-										removeViewBox: false,
-									},
-								],
+								plugins: extendDefaultPlugins([{ name: 'removeViewBox', active: false }]),
 							},
 						],
 					],

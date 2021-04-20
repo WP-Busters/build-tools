@@ -21,7 +21,7 @@ export const prepareConfig = (c) => {
 		hot: true,
 		disableESLintPlugin: false,
 		...(c || {}),
-		...userConfig,
+		...(typeof userConfig === 'function' ? userConfig() : userConfig),
 	};
 	process.env.NODE_ENV = config.isEnvProduction ? 'production' : 'development';
 	process.env.BABEL_ENV = config.isEnvProduction ? 'production' : 'development';
