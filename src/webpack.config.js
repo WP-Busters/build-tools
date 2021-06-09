@@ -158,7 +158,9 @@ export default ({
 	const hasJsxRuntime = () => checkHasJsxRuntime(projectRoot + '/');
 
 	return {
-		target: 'web',
+		// target: 'web',
+		target: ['web', 'es2016'],
+		// target: ['web', 'es5'],
 
 		mode: isEnvProduction ? 'production' : 'development',
 
@@ -190,8 +192,10 @@ export default ({
 			path: output,
 			// Add /* filename */ comments to generated require()s in the output.
 			pathinfo: isEnvDevelopment,
-			filename: isEnvProduction ? '[name].[contenthash:8].js' : '[name].js',
-			chunkFilename: isEnvProduction ? '[name].[contenthash:8].chunk.js' : '[name].chunk.js',
+			filename: isEnvProduction ? '[name].[contenthash:8].js' : '[name].[contenthash:4].js',
+			chunkFilename: isEnvProduction
+				? '[name].[contenthash:8].chunk.js'
+				: '[name].[contenthash:4].chunk.js',
 			publicPath: isEnvProduction ? '/' : `https://${host}:${port}/`,
 
 			// Point sourcemap entries to original disk location (format as URL on Windows)
@@ -208,6 +212,12 @@ export default ({
 		externals: {
 			jquery: 'jQuery',
 			backbone: 'Backbone',
+			'@wordpress/plugins': {
+				window: ['wp', 'plugins'],
+			},
+			'@wordpress/edit-post': {
+				window: ['wp', 'editPost'],
+			},
 		},
 
 		module: {
@@ -224,6 +234,10 @@ export default ({
 							include: [
 								path.resolve(watch),
 								/node_modules\/react-popper/,
+								// /node_modules\/ansi-styles/, // IE 11
+								// /node_modules\/chalk/, // IE 11
+								// /node_modules\/strip-ansi/, // IE 11
+								// /node_modules\/proxy-compare/, // IE 11
 								/node_modules\/.+\.(jsx|ts|tsx)$/,
 							],
 							// exclude: /node_modules/,
@@ -697,7 +711,7 @@ export default ({
 							ecma: 8,
 						},
 						compress: {
-							ecma: 5,
+							ecma: 2016,
 							warnings: false,
 							// Disabled because of an issue with Uglify breaking seemingly valid code:
 							// https://github.com/facebook/create-react-app/issues/2376
@@ -729,7 +743,6 @@ export default ({
 
 				isEnvProduction &&
 					new CssMinimizerPlugin({
-						sourceMap: false,
 						minimizerOptions: {
 							preset: ['default', { minifyFontValues: { removeQuotes: false } }],
 						},

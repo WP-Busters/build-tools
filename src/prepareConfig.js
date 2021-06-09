@@ -25,6 +25,7 @@ export const prepareConfig = (c) => {
 	};
 	process.env.NODE_ENV = config.isEnvProduction ? 'production' : 'development';
 	process.env.BABEL_ENV = config.isEnvProduction ? 'production' : 'development';
+	// process.env.BROWSERSLIST = '> 1%, ie 11';
 
 	config.output = projectFile(config.output);
 	config.watch = projectFile(config.watch);
