@@ -20,6 +20,7 @@ export const prepareConfig = (c) => {
 		runtimePublicPath: false,
 		hot: true,
 		disableESLintPlugin: false,
+		isGutenberg: false,
 		...(c || {}),
 		...(typeof userConfig === 'function' ? userConfig() : userConfig),
 	};
@@ -34,6 +35,11 @@ export const prepareConfig = (c) => {
 	config.entry = mapValues(config.entry, (p) => projectFile(p));
 
 	if (config.isEnvProduction) {
+		config.useReactRefresh = false;
+	}
+
+	if (config.isGutenberg) {
+		config.usePreact = false;
 		config.useReactRefresh = false;
 	}
 
