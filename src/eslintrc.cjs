@@ -1,4 +1,4 @@
-import config from 'eslint-config-react-app/index';
+const config = require('eslint-config-react-app/index.js');
 
 // config.overrides[0].files.push('*.tsx');
 // config.overrides[0].files.push('*.ts');

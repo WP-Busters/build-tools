@@ -1,6 +1,6 @@
 import parseArgs from 'minimist';
-import { commandWatch } from './commandWatch';
-import { commandBuild } from './commandBuild';
+import { commandBuild } from './commandBuild.js';
+import { commandWatch } from './commandWatch.js';
 
 export const cli = (argv, error) => {
 	let args = parseArgs(argv, {

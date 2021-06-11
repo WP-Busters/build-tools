@@ -1,11 +1,14 @@
+import bfj from 'bfj';
 import chalk from 'chalk';
 import del from 'del';
-import { measureFileSizesBeforeBuild, printFileSizesAfterBuild } from 'react-dev-utils/FileSizeReporter';
+import {
+	measureFileSizesBeforeBuild,
+	printFileSizesAfterBuild,
+} from 'react-dev-utils/FileSizeReporter.js';
+import printBuildError from 'react-dev-utils/printBuildError.js';
 import webpack from 'webpack';
-import { prepareConfig } from './prepareConfig';
-const bfj = require('bfj');
-const formatWebpackMessages = require('./formatWebpackMessages');
-const printBuildError = require('react-dev-utils/printBuildError');
+import formatWebpackMessages from './formatWebpackMessages.cjs';
+import { prepareConfig } from './prepareConfig.js';
 
 function build(config, configW, previousFileSizes) {
 	console.log('Creating an optimized production build...');
@@ -64,7 +67,7 @@ function build(config, configW, previousFileSizes) {
 }
 
 export const commandBuild = async () => {
-	const { config, webPackConfig } = prepareConfig({
+	const { config, webPackConfig } = await prepareConfig({
 		isEnvProduction: true,
 		// useReactRefresh: false,
 	});
@@ -84,13 +87,7 @@ export const commandBuild = async () => {
 				}
 
 				console.log('File sizes after gzip:\n');
-				printFileSizesAfterBuild(
-					stats,
-					previousFileSizes,
-					config.output,
-					512 * 1024,
-					1024 * 1024,
-				);
+				printFileSizesAfterBuild(stats, previousFileSizes, config.output, 512 * 1024, 1024 * 1024);
 				console.log();
 			},
 			(err) => {

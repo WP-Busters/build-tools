@@ -1,12 +1,12 @@
 import chalk from 'chalk';
 import cors from 'cors';
 import del from 'del';
+import errorOverlayMiddleware from 'react-dev-utils/errorOverlayMiddleware.js';
 import webpack from 'webpack';
 import WebpackDevServer from 'webpack-dev-server';
-import { prepareConfig } from './prepareConfig';
-import { clearConsole } from './utils';
-const errorOverlayMiddleware = require('react-dev-utils/errorOverlayMiddleware');
-const formatWebpackMessages = require('./formatWebpackMessages');
+import formatWebpackMessages from './formatWebpackMessages.cjs';
+import { prepareConfig } from './prepareConfig.js';
+import { clearConsole } from './utils.js';
 
 const createComplier = (config) => {
 	// "Compiler" is a low-level interface to webpack.
@@ -51,7 +51,7 @@ const createComplier = (config) => {
 		const messages = formatWebpackMessages(statsData);
 		const isSuccessful = !messages.errors.length && !messages.warnings.length;
 		if (isSuccessful) {
-			console.log(chalk.green('Compiled successfully!'));
+			console.log(chalk.green('\nCompiled successfully!'));
 		}
 
 		// If errors exist, only show errors.
@@ -79,7 +79,7 @@ const createComplier = (config) => {
 export const commandWatch = async () => {
 	process.env.NODE_ENV = 'development';
 
-	const { config, webPackConfig } = prepareConfig({
+	const { config, webPackConfig } = await prepareConfig({
 		isEnvProduction: false,
 		// useReactRefresh: true,
 	});

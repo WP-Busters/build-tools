@@ -1,13 +1,17 @@
-module.exports = {
+export default {
 	presets: [
 		[
 			'@babel/preset-env',
 			{
+				modules: false,
+
 				targets: {
-					node: 'current',
+					esmodules: true,
+
+					node: '14',
 				},
 			},
 		],
 	],
-	"plugins": ["@babel/plugin-proposal-class-properties"]
+	plugins: ['@babel/plugin-proposal-class-properties'],
 };

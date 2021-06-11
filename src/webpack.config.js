@@ -1,13 +1,44 @@
 import ReactRefreshWebpackPlugin from '@pmmmwh/react-refresh-webpack-plugin';
+import { CleanWebpackPlugin } from 'clean-webpack-plugin';
 import CssMinimizerPlugin from 'css-minimizer-webpack-plugin';
+import ESLintPlugin from 'eslint-webpack-plugin';
 import ImageminPlugin from 'imagemin-webpack';
 import MiniCssExtractPlugin from 'mini-css-extract-plugin';
+import { createRequire } from 'module';
 import path from 'path';
+import SpeedMeasurePlugin from 'speed-measure-webpack-plugin';
+import { extendDefaultPlugins } from 'svgo';
 import TerserPlugin from 'terser-webpack-plugin';
 import webpack from 'webpack';
-import { WpCustomDependencyExtractionWebpackPlugin } from './WpCustomDependencyExtractionWebpackPlugin';
-const ESLintPlugin = require('eslint-webpack-plugin');
-const { extendDefaultPlugins } = require('svgo');
+import { RuntimePublicPath } from './RuntimePublicPath.js';
+import { WpCustomDependencyExtractionWebpackPlugin } from './WpCustomDependencyExtractionWebpackPlugin.js';
+
+const require = createRequire(import.meta.url);
+
+/**
+ * Gets a unique identifier for the webpack build to avoid multiple webpack
+ * runtimes to conflict when using globals.
+ * This is polyfill and it is based on the default webpack 5 implementation.
+ *
+ * @see https://github.com/webpack/webpack/blob/bbb16e7af2eddba4cd77ca739904c2aa238a2b7b/lib/config/defaults.js#L374-L376
+ *
+ * @return {string} The generated identifier.
+ */
+const getJsonpFunctionIdentifier = (name) => {
+	const jsonpFunction = 'webpack5';
+	if (typeof name !== 'string' || !name) {
+		return jsonpFunction;
+	}
+	const IDENTIFIER_NAME_REPLACE_REGEX = /^([^a-zA-Z$_])/;
+	const IDENTIFIER_ALPHA_NUMERIC_NAME_REPLACE_REGEX = /[^a-zA-Z0-9$]+/g;
+
+	return (
+		jsonpFunction +
+		name
+			.replace(IDENTIFIER_NAME_REPLACE_REGEX, '_$1')
+			.replace(IDENTIFIER_ALPHA_NUMERIC_NAME_REPLACE_REGEX, '_')
+	);
+};
 
 const checkHasJsxRuntime = ((path = '') => {
 	try {
@@ -17,38 +48,6 @@ const checkHasJsxRuntime = ((path = '') => {
 		return false;
 	}
 })();
-
-class RuntimePublicPath {
-	constructor(settings) {
-		this._publicPath = settings.publicPath;
-	}
-	apply(compiler) {
-		const _publicPath = this._publicPath;
-
-		if (!_publicPath) {
-			return;
-		}
-
-		const _name = 'RuntimePublicPath';
-
-		function updatePublicPath(source) {
-			var newSource = [];
-			newSource.push(source);
-			// newSource.push('(() => {');
-			newSource.push(' __webpack_require__.p = ' + _publicPath + ';');
-			// newSource.push(' __webpack_public_path__ = ' + _publicPath + ';');
-			// newSource.push('})();');
-
-			return newSource.join('\n');
-		}
-
-		compiler.hooks.thisCompilation.tap(_name, function (compilation) {
-			compilation.mainTemplate.hooks.requireExtensions.tap(_name, function (source, chunk, hash) {
-				return updatePublicPath(source);
-			});
-		});
-	}
-}
 
 const getStyleLoaders = ({
 	isEnvDevelopment,
@@ -137,11 +136,115 @@ const getStyleLoaders = ({
 	return loaders;
 };
 
+const getBabelLoader = ({ isEnvDevelopment, isEnvProduction, useReactRefresh, hasJsxRuntime }) => [
+	{
+		loader: require.resolve('babel-loader'),
+		options: {
+			// customize: require.resolve('babel-preset-react-app/webpack-overrides'),
+			cacheDirectory: true,
+			babelrc: false,
+			configFile: false,
+
+			presets: [
+				// [
+				// 	require.resolve('@babel/preset-env'),
+				// 	{
+				// 		configPath: __dirname,
+				// 		debug: true,
+				// 		targets: {
+				// 			browsers: ['> 1%', 'last 2 versions', 'IE 11'],
+				// 		},
+				// 		modules: false,
+				// 	},
+				// ],
+				[
+					require.resolve('babel-preset-react-app'),
+					{
+						runtime: hasJsxRuntime ? 'automatic' : 'classic',
+					},
+				],
+			],
+
+			plugins: [
+				//require.resolve('@babel/plugin-transform-modules-commonjs'),
+				require.resolve('@reatom/babel-plugin'),
+				// require.resolve('babel-plugin-styled-components'),
+				[
+					require.resolve('babel-plugin-transform-imports'),
+					{
+						lodash: {
+							transform: 'lodash/${member}',
+							preventFullImport: true,
+						},
+						['react-use']: {
+							transform: 'react-use/lib/${member}',
+							preventFullImport: true,
+						},
+						['react-transition-group']: {
+							transform: 'react-transition-group/esm/${member}',
+							preventFullImport: true,
+						},
+						['@popperjs/core']: {
+							transform: '@popperjs/core/lib/popper-lite',
+							skipDefaultConversion: true,
+							preventFullImport: true,
+						},
+						['react-popper']: {
+							transform: 'react-popper/lib/esm/${member}',
+							skipDefaultConversion: true,
+							preventFullImport: true,
+						},
+						rsuite: {
+							transform: 'rsuite/lib/${member}',
+							preventFullImport: true,
+						},
+						['lodash-es']: {
+							transform: 'lodash/${member}',
+							preventFullImport: true,
+						},
+					},
+				],
+				[
+					require.resolve('@babel/plugin-transform-spread'),
+					{
+						loose: true,
+					},
+				],
+				isEnvDevelopment && useReactRefresh && require.resolve('react-refresh/babel'),
+			].filter(Boolean),
+
+			// This is a feature of `babel-loader` for webpack (not Babel itself).
+			// It enables caching results in ./node_modules/.cache/babel-loader/
+			// directory for faster rebuilds.
+			cacheDirectory: true,
+			cacheCompression: false,
+			compact: isEnvProduction,
+		},
+	},
+	{
+		loader: require.resolve('astroturf/loader'),
+		options: {
+			extension: '.astroturf',
+			// writeFiles: true,
+			// getFileName(hostFilePath, pluginsOptions) {
+			// 	// const basepath = join(
+			// 	// 	dirname(hostFilePath),
+			// 	// 	basename(hostFilePath, extname(hostFilePath)),
+			// 	// );
+			// 	const basepath =
+			// 		'/Users/dk/Mine/sites/wp-image-directory3/email-builder/client/';
+			// 	return `${basepath}__extracted_style.astroturf`;
+			// },
+		},
+	},
+];
+
 export default ({
 	isEnvProduction,
 	isEnvProductionProfile,
 	entry,
 	output,
+	packageJson,
 	watch,
 	useReactRefresh,
 	host,
@@ -158,7 +261,11 @@ export default ({
 
 	let filename = isEnvProduction ? '[name].[contenthash:8].js' : '[name].[contenthash:4].js';
 
-	return {
+	const speadMeaurePlugin = false;
+
+	const smp = speadMeaurePlugin ? new SpeedMeasurePlugin() : { wrap: (e) => e };
+
+	return smp.wrap({
 		// target: 'web',
 		target: ['web', 'es2016'],
 		// target: ['web', 'es5'],
@@ -170,7 +277,7 @@ export default ({
 
 		resolve: {
 			// modules: ['node_modules', path.resolve(watch, 'node_modules')],
-			extensions: ['.tsx', '.ts', '.jsx', '.js', '.json', '.php'],
+			extensions: ['.tsx', '.ts', '.jsx', '.cjs', '.js', '.json'],
 			alias: {
 				...(usePreact
 					? {
@@ -208,6 +315,11 @@ export default ({
 			// this defaults to 'window', but by setting it to 'this' then
 			// module chunks which are built will work in web workers as well.
 			globalObject: 'this',
+
+			// Prevents conflicts when multiple webpack runtimes (from different apps)
+			// are used on the same page.
+			// @see https://github.com/WordPress/gutenberg/issues/23607
+			uniqueName: getJsonpFunctionIdentifier(packageJson.name),
 		},
 
 		externals: {
@@ -225,119 +337,19 @@ export default ({
 							use: [require.resolve('script-loader')],
 						},
 						{
-							test: [/\.(js|mjs|jsx|ts|tsx)$/],
+							test: [/\.(js|mjs|cjs|jsx|ts|tsx)$/],
 							include: [
 								path.resolve(watch),
 								/node_modules\/react-popper/,
-								// /node_modules\/ansi-styles/, // IE 11
-								// /node_modules\/chalk/, // IE 11
-								// /node_modules\/strip-ansi/, // IE 11
-								// /node_modules\/proxy-compare/, // IE 11
 								/node_modules\/.+\.(jsx|ts|tsx)$/,
 							],
 							// exclude: /node_modules/,
-							use: [
-								{
-									loader: require.resolve('babel-loader'),
-									options: {
-										// customize: require.resolve('babel-preset-react-app/webpack-overrides'),
-
-										babelrc: false,
-										configFile: false,
-
-										presets: [
-											// [
-											// 	require.resolve('@babel/preset-env'),
-											// 	{
-											// 		configPath: __dirname,
-											// 		debug: true,
-											// 		targets: {
-											// 			browsers: ['> 1%', 'last 2 versions', 'IE 11'],
-											// 		},
-											// 		modules: false,
-											// 	},
-											// ],
-											[
-												require.resolve('babel-preset-react-app'),
-												{
-													runtime: hasJsxRuntime ? 'automatic' : 'classic',
-												},
-											],
-										],
-
-										plugins: [
-											//require.resolve('@babel/plugin-transform-modules-commonjs'),
-											require.resolve('@reatom/babel-plugin'),
-											// require.resolve('babel-plugin-styled-components'),
-											[
-												require.resolve('babel-plugin-transform-imports'),
-												{
-													lodash: {
-														transform: 'lodash/${member}',
-														preventFullImport: true,
-													},
-													['react-use']: {
-														transform: 'react-use/lib/${member}',
-														preventFullImport: true,
-													},
-													['react-transition-group']: {
-														transform: 'react-transition-group/esm/${member}',
-														preventFullImport: true,
-													},
-													['@popperjs/core']: {
-														transform: '@popperjs/core/lib/popper-lite',
-														skipDefaultConversion: true,
-														preventFullImport: true,
-													},
-													['react-popper']: {
-														transform: 'react-popper/lib/esm/${member}',
-														skipDefaultConversion: true,
-														preventFullImport: true,
-													},
-													rsuite: {
-														transform: 'rsuite/lib/${member}',
-														preventFullImport: true,
-													},
-													['lodash-es']: {
-														transform: 'lodash/${member}',
-														preventFullImport: true,
-													},
-												},
-											],
-											[
-												require.resolve('@babel/plugin-transform-spread'),
-												{
-													loose: true,
-												},
-											],
-											isEnvDevelopment && useReactRefresh && require.resolve('react-refresh/babel'),
-										].filter(Boolean),
-
-										// This is a feature of `babel-loader` for webpack (not Babel itself).
-										// It enables caching results in ./node_modules/.cache/babel-loader/
-										// directory for faster rebuilds.
-										cacheDirectory: true,
-										cacheCompression: false,
-										compact: isEnvProduction,
-									},
-								},
-								{
-									loader: require.resolve('astroturf/loader'),
-									options: {
-										extension: '.astroturf',
-										// writeFiles: true,
-										// getFileName(hostFilePath, pluginsOptions) {
-										// 	// const basepath = join(
-										// 	// 	dirname(hostFilePath),
-										// 	// 	basename(hostFilePath, extname(hostFilePath)),
-										// 	// );
-										// 	const basepath =
-										// 		'/Users/dk/Mine/sites/wp-image-directory3/email-builder/client/';
-										// 	return `${basepath}__extracted_style.astroturf`;
-										// },
-									},
-								},
-							],
+							use: getBabelLoader({
+								isEnvProduction,
+								isEnvDevelopment,
+								useReactRefresh,
+								hasJsxRuntime,
+							}),
 						},
 						{
 							test: [/\.css$/],
@@ -453,29 +465,31 @@ export default ({
 
 						{
 							test: [/\.astroturf$/],
-							use: getStyleLoaders({
-								watch,
-								isEnvDevelopment,
-								isEnvProduction,
-								cssOptions: {
-									importLoaders: 1,
-									sourceMap: isEnvDevelopment,
+							use: [
+								...getStyleLoaders({
+									watch,
+									isEnvDevelopment,
+									isEnvProduction,
+									cssOptions: {
+										importLoaders: 1,
+										sourceMap: isEnvDevelopment,
 
-									modules: {
-										compileType: 'module',
-										// compileType: 'icss',
-										mode: 'local',
-										exportGlobals: true,
-										// //context: watch,
-										localIdentName: isEnvDevelopment ? '[path][name]__[local]' : '[hash:base64]',
+										modules: {
+											compileType: 'module',
+											// compileType: 'icss',
+											mode: 'local',
+											exportGlobals: true,
+											// //context: watch,
+											localIdentName: isEnvDevelopment ? '[path][name]__[local]' : '[hash:base64]',
+										},
 									},
-								},
 
-								preProcessor: 'sass-loader',
-								preOptions: {
-									implementation: require('sass'),
-								},
-							}),
+									preProcessor: 'sass-loader',
+									preOptions: {
+										implementation: require('sass'),
+									},
+								}),
+							],
 							// Don't consider CSS imports dead code even if the
 							// containing package claims to have no side effects.
 							// Remove this when webpack adds a warning or an error for this.
@@ -540,7 +554,7 @@ export default ({
 							// its runtime that would otherwise be processed through "file" loader.
 							// Also exclude `html` and `json` extensions so they get processed
 							// by webpacks internal loaders.
-							exclude: [/\.(js|mjs|jsx|ts|tsx)$/, /\.html$/, /\.json$/],
+							exclude: [/\.(js|mjs|cjs|jsx|ts|tsx)$/, /\.html$/, /\.json$/],
 							options: {
 								name: 'assets/[name].[contenthash:8].[ext]',
 							},
@@ -563,6 +577,8 @@ export default ({
 		},
 
 		plugins: [
+			new webpack.ProgressPlugin(),
+			new CleanWebpackPlugin(),
 			isEnvProduction &&
 				new MiniCssExtractPlugin({
 					filename: '[name].[contenthash:8].css',
@@ -607,7 +623,7 @@ export default ({
 						// entry: require.resolve('@pmmmwh/react-refresh-webpack-plugin/client/ErrorOverlayEntry'),
 						// module: require.resolve('@pmmmwh/react-refresh-webpack-plugin/overlay'),
 
-						entry: require.resolve('./webpackHotDevClient'),
+						entry: require.resolve('./webpackHotDevClient.cjs'),
 						// entry: require.resolve('react-dev-utils/webpackHotDevClient'),
 						// The expected exports are slightly different from what the overlay exports,
 						// so an interop is included here to enable feedback on module-level errors.
@@ -656,7 +672,7 @@ export default ({
 
 			!disableESLintPlugin &&
 				new ESLintPlugin({
-					extensions: ['js', 'mjs', 'jsx', 'ts', 'tsx'],
+					extensions: ['js', 'mjs', 'cjs', 'jsx', 'ts', 'tsx'],
 					formatter: require.resolve('eslint-formatter-pretty'),
 					eslintPath: require.resolve('eslint'),
 					emitWarning: isEnvDevelopment,
@@ -669,7 +685,7 @@ export default ({
 					cwd: projectRoot,
 					resolvePluginsRelativeTo: builderRoot,
 					baseConfig: {
-						extends: [require.resolve('./eslintrc.js')],
+						extends: [require.resolve('./eslintrc.cjs')],
 						// extends: [require.resolve('eslint-config-react-app/base')],
 						rules: {
 							...(!hasJsxRuntime && {
@@ -752,5 +768,5 @@ export default ({
 					}),
 			].filter(Boolean),
 		},
-	};
+	});
 };
