@@ -86,7 +86,16 @@ export class WpCustomDependencyExtractionWebpackPlugin {
 
 				const assetData = {
 					dependencies: Array.from(entrypointExternalizedWpDeps).sort(),
-					files: Array.from(runtimeChunk.files),
+					files: Array.from(runtimeChunk.files).filter(
+						file => {
+							const asset = compilation.getAsset(file);
+							if ( asset?.info.hotModuleReplacement ) {
+								return false;
+							}
+			
+							return true;
+						},
+					),
 					// version: runtimeChunk.hash,
 				};
 
