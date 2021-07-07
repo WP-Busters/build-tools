@@ -2,7 +2,7 @@ import ReactRefreshWebpackPlugin from '@pmmmwh/react-refresh-webpack-plugin';
 import { CleanWebpackPlugin } from 'clean-webpack-plugin';
 import CssMinimizerPlugin from 'css-minimizer-webpack-plugin';
 import ESLintPlugin from 'eslint-webpack-plugin';
-import ImageminPlugin from 'imagemin-webpack';
+import ImageMinimizerPlugin from 'image-minimizer-webpack-plugin';
 import MiniCssExtractPlugin from 'mini-css-extract-plugin';
 import { createRequire } from 'module';
 import path from 'path';
@@ -583,6 +583,7 @@ export default ({
 				new MiniCssExtractPlugin({
 					filename: '[name].[contenthash:8].css',
 					chunkFilename: '[name].[contenthash:8].chunk.css',
+					ignoreOrder: true // Enable to remove warnings about conflicting order
 				}),
 
 			new WpCustomDependencyExtractionWebpackPlugin(),
@@ -648,10 +649,8 @@ export default ({
 				__RSUITE_CLASSNAME_PREFIX__: JSON.stringify('bust-'),
 			}),
 
-			new ImageminPlugin({
-				bail: false, // Ignore errors on corrupted images
-				cache: true,
-				imageminOptions: {
+			new ImageMinimizerPlugin({
+				minimizerOptions: {
 					// Before using imagemin plugins make sure you have added them in `package.json` (`devDependencies`) and installed them
 
 					// Lossless optimization with custom option
@@ -663,7 +662,12 @@ export default ({
 						[
 							'svgo',
 							{
-								plugins: extendDefaultPlugins([{ name: 'removeViewBox', active: false }]),
+								plugins: extendDefaultPlugins([{ name: 'removeViewBox', active: false }, {
+                  name: "addAttributesToSVGElement",
+                  params: {
+                    attributes: [{ xmlns: "http://www.w3.org/2000/svg" }],
+                  },
+                }]),
 							},
 						],
 					],
@@ -695,7 +699,7 @@ export default ({
 					},
 				}),
 
-			isEnvProduction &&
+			// isEnvProduction &&
 				runtimePublicPath &&
 				new RuntimePublicPath({
 					publicPath: runtimePublicPath,
@@ -716,7 +720,6 @@ export default ({
 				// This is only used in production mode
 				// false &&
 				new TerserPlugin({
-					cache: true,
 					parallel: true,
 					terserOptions: {
 						parse: {
@@ -756,7 +759,6 @@ export default ({
 							ascii_only: true,
 						},
 					},
-					sourceMap: false,
 					extractComments: false,
 				}),
 

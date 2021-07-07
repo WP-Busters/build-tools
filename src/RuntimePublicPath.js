@@ -5,6 +5,11 @@ export class RuntimePublicPath {
 	apply(compiler) {
 		const _publicPath = this._publicPath;
 
+		if(!this._publicPath && document.currentScript) {
+			const src = document.currentScript.src;
+			_publicPath = src.substring(0, str.lastIndexOf("/"));
+		}
+
 		if (!_publicPath) {
 			return;
 		}
@@ -14,6 +19,7 @@ export class RuntimePublicPath {
 		function updatePublicPath(source) {
 			var newSource = [];
 			newSource.push(source);
+
 			// newSource.push('(() => {');
 			newSource.push(' __webpack_require__.p = ' + _publicPath + ';');
 			// newSource.push(' __webpack_public_path__ = ' + _publicPath + ';');

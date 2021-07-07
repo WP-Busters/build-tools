@@ -20,7 +20,7 @@ export class WpCustomDependencyExtractionWebpackPlugin {
 		this.externalsPlugin = new webpack.ExternalsPlugin('window', this.externalizeWpDeps.bind(this));
 	}
 
-	externalizeWpDeps(_context, request, callback) {
+	externalizeWpDeps({request}, callback) {
 		let externalRequest;
 
 		// Cascade to default if unhandled and enabled
@@ -54,71 +54,76 @@ export class WpCustomDependencyExtractionWebpackPlugin {
 		const { webpack } = compiler;
 		const { RawSource } = webpack.sources;
 
-		compiler.hooks.emit.tap(pluginName, (compilation) => {
-			const manifest = {};
+		compiler.hooks.thisCompilation.tap(pluginName, (compilation) => {
+			compilation.hooks.processAssets.tap(
+				{ name: pluginName, stage: webpack.Compilation.PROCESS_ASSETS_STAGE_ADDITIONAL}, 
+				() => {
+					const manifest = {};
 
-			for (const [entrypointName, entrypoint] of compilation.entrypoints.entries()) {
-				const entrypointExternalizedWpDeps = new Set();
+					for (const [entrypointName, entrypoint] of compilation.entrypoints.entries()) {
+						const entrypointExternalizedWpDeps = new Set();
 
-				const processModule = ({ userRequest }) => {
-					if (this.externalizedDeps.has(userRequest)) {
-						let scriptDependency = null;
-						if (userRequest.startsWith(WORDPRESS_NAMESPACE)) {
-							scriptDependency = 'wp-' + userRequest.substring(WORDPRESS_NAMESPACE.length);
-						}
-						entrypointExternalizedWpDeps.add(scriptDependency);
+						const processModule = ({ userRequest }) => {
+							if (this.externalizedDeps.has(userRequest)) {
+								let scriptDependency = null;
+								if (userRequest.startsWith(WORDPRESS_NAMESPACE)) {
+									scriptDependency = 'wp-' + userRequest.substring(WORDPRESS_NAMESPACE.length);
+								}
+								entrypointExternalizedWpDeps.add(scriptDependency);
+							}
+						};
+
+						compilation.entrypoints.get(entrypointName).chunks.forEach((chunk) => {
+							compilation.chunkGraph.getChunkModules(chunk).forEach((chunkModule) => {
+								processModule(chunkModule);
+
+								if (chunkModule.modules) {
+									for (const concatModule of chunkModule.modules) {
+										processModule(concatModule);
+									}
+								}
+							});
+						});
+
+						const runtimeChunk = entrypoint.getRuntimeChunk();
+
+						const assetData = {
+							dependencies: Array.from(entrypointExternalizedWpDeps).sort(),
+							files: Array.from(runtimeChunk.files).filter(
+								file => {
+									const asset = compilation.getAsset(file);
+									if ( asset?.info.hotModuleReplacement ) {
+										return false;
+									}
+					
+									return true;
+								},
+							),
+							// version: runtimeChunk.hash,
+						};
+
+						// const assetString = JSON.stringify(assetData); // this.stringify(assetData);
+						// const assetFilename = runtimeChunk.name + '.json';
+
+						manifest[entrypointName] = assetData;
+
+						// const path = compilation.getPath(assetFilename, {
+						// 	chunk: { name: 'asset-' + entrypointName },
+						// 	filename: assetFilename,
+						// });
+
+						// compilation.emitAsset(path, new RawSource(assetString));
 					}
-				};
 
-				compilation.entrypoints.get(entrypointName).chunks.forEach((chunk) => {
-					compilation.chunkGraph.getChunkModules(chunk).forEach((chunkModule) => {
-						processModule(chunkModule);
+					const assetFilename = 'asset-manifest.json';
 
-						if (chunkModule.modules) {
-							for (const concatModule of chunkModule.modules) {
-								processModule(concatModule);
-							}
-						}
+					const path = compilation.getPath(assetFilename, {
+						chunk: { name: 'asset-manifest' },
+						filename: assetFilename,
 					});
-				});
-
-				const runtimeChunk = entrypoint.getRuntimeChunk();
-
-				const assetData = {
-					dependencies: Array.from(entrypointExternalizedWpDeps).sort(),
-					files: Array.from(runtimeChunk.files).filter(
-						file => {
-							const asset = compilation.getAsset(file);
-							if ( asset?.info.hotModuleReplacement ) {
-								return false;
-							}
-			
-							return true;
-						},
-					),
-					// version: runtimeChunk.hash,
-				};
-
-				// const assetString = JSON.stringify(assetData); // this.stringify(assetData);
-				// const assetFilename = runtimeChunk.name + '.json';
-
-				manifest[entrypointName] = assetData;
-
-				// const path = compilation.getPath(assetFilename, {
-				// 	chunk: { name: 'asset-' + entrypointName },
-				// 	filename: assetFilename,
-				// });
-
-				// compilation.emitAsset(path, new RawSource(assetString));
-			}
-
-			const assetFilename = 'asset-manifest.json';
-
-			const path = compilation.getPath(assetFilename, {
-				chunk: { name: 'asset-manifest' },
-				filename: assetFilename,
-			});
-			compilation.emitAsset(path, new RawSource(JSON.stringify(manifest)));
+					compilation.emitAsset(path, new RawSource(JSON.stringify(manifest)));
+						}
+				);
 		});
 	}
 }
