@@ -700,7 +700,7 @@ export default ({
 				}),
 
 			// isEnvProduction &&
-				runtimePublicPath &&
+				// runtimePublicPath &&
 				new RuntimePublicPath({
 					publicPath: runtimePublicPath,
 				}),

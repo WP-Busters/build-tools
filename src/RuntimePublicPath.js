@@ -5,14 +5,6 @@ export class RuntimePublicPath {
 	apply(compiler) {
 		const _publicPath = this._publicPath;
 
-		if(!this._publicPath && document.currentScript) {
-			const src = document.currentScript.src;
-			_publicPath = src.substring(0, str.lastIndexOf("/"));
-		}
-
-		if (!_publicPath) {
-			return;
-		}
 
 		const _name = 'RuntimePublicPath';
 
@@ -20,10 +12,16 @@ export class RuntimePublicPath {
 			var newSource = [];
 			newSource.push(source);
 
-			// newSource.push('(() => {');
-			newSource.push(' __webpack_require__.p = ' + _publicPath + ';');
-			// newSource.push(' __webpack_public_path__ = ' + _publicPath + ';');
-			// newSource.push('})();');
+			const fn = `
+				var _publicPath = ${_publicPath ? JSON.stringify(_publicPath) : 'null'};
+				var src;
+				if(!_publicPath && document.currentScript && (src = document.currentScript.src)) {
+					_publicPath = src.substring(0, src.lastIndexOf("/")) + '/';
+				}
+
+				__webpack_require__.p = _publicPath;
+			`;
+			newSource.push(fn);
 
 			return newSource.join('\n');
 		}
