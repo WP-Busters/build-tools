@@ -1,9 +1,8 @@
-import bfj from 'bfj';
 import chalk from 'chalk';
 import del from 'del';
 import {
 	measureFileSizesBeforeBuild,
-	printFileSizesAfterBuild,
+	printFileSizesAfterBuild
 } from 'react-dev-utils/FileSizeReporter.js';
 import printBuildError from 'react-dev-utils/printBuildError.js';
 import webpack from 'webpack';
@@ -54,12 +53,12 @@ function build(config, configW, previousFileSizes) {
 				warnings: messages.warnings,
 			};
 
-			if (config.writeStatsJson) {
-				return bfj
-					.write(config.projectRoot + '/bundle-stats.json', stats.toJson())
-					.then(() => resolve(resolveArgs))
-					.catch((error) => reject(new Error(error)));
-			}
+			// if (config.writeStatsJson) {
+			// 	return bfj
+			// 		.write(config.projectRoot + '/bundle-stats.json', stats.toJson())
+			// 		.then(() => resolve(resolveArgs))
+			// 		.catch((error) => reject(new Error(error)));
+			// }
 
 			return resolve(resolveArgs);
 		});

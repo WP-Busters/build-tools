@@ -1,4 +1,5 @@
 import ReactRefreshWebpackPlugin from '@pmmmwh/react-refresh-webpack-plugin';
+import StatoscopeWebpackPluginImport from '@statoscope/webpack-plugin';
 import { CleanWebpackPlugin } from 'clean-webpack-plugin';
 import CssMinimizerPlugin from 'css-minimizer-webpack-plugin';
 import ESLintPlugin from 'eslint-webpack-plugin';
@@ -10,10 +11,14 @@ import SpeedMeasurePlugin from 'speed-measure-webpack-plugin';
 import { extendDefaultPlugins } from 'svgo';
 import TerserPlugin from 'terser-webpack-plugin';
 import webpack from 'webpack';
+import RemoveEmptyScriptsPlugin from 'webpack-remove-empty-scripts';
 import { RuntimePublicPath } from './RuntimePublicPath.js';
 import { WpCustomDependencyExtractionWebpackPlugin } from './WpCustomDependencyExtractionWebpackPlugin.js';
 
 const require = createRequire(import.meta.url);
+
+const StatoscopeWebpackPlugin = StatoscopeWebpackPluginImport.default
+
 
 /**
  * Gets a unique identifier for the webpack build to avoid multiple webpack
@@ -245,6 +250,7 @@ export default ({
 	entry,
 	output,
 	packageJson,
+	writeStatsJson,
 	watch,
 	useReactRefresh,
 	host,
@@ -276,8 +282,8 @@ export default ({
 		devtool: isEnvProduction ? false : 'cheap-module-source-map', //'cheap-module-source-map',
 
 		resolve: {
-			// modules: ['node_modules', path.resolve(watch, 'node_modules')],
-			extensions: ['.tsx', '.ts', '.jsx', '.cjs', '.js', '.json'],
+			modules: ['node_modules', path.resolve(watch, 'node_modules')],
+			extensions: ['.tsx', '.ts', '.jsx', '.mjs', '.cjs', '.js', '.json'],
 			alias: {
 				...(usePreact
 					? {
@@ -288,6 +294,9 @@ export default ({
 					: {}),
 
 				process: require.resolve('process/browser'),
+				'tslib': require.resolve('tslib'),
+				// '@babel/runtime': require.resolve('@babel/runtime'),
+				'react-fast-compare': require.resolve('fast-deep-equal'),
 				...(isEnvProductionProfile && {
 					'react-dom$': 'react-dom/profiling',
 					'scheduler/tracing': 'scheduler/tracing-profiling',
@@ -453,6 +462,7 @@ export default ({
 										exportGlobals: true,
 										//context: watch,
 										localIdentName: isEnvDevelopment ? '[path][name]__[local]' : '[hash:base64]',
+										localIdentContext: watch,
 									},
 								},
 							}),
@@ -481,6 +491,7 @@ export default ({
 											exportGlobals: true,
 											// //context: watch,
 											localIdentName: isEnvDevelopment ? '[path][name]__[local]' : '[hash:base64]',
+											localIdentContext: watch,
 										},
 									},
 
@@ -513,6 +524,7 @@ export default ({
 											exportGlobals: true,
 											//context: watch,
 											localIdentName: isEnvDevelopment ? '[path][name]__[local]' : '[hash:base64]',
+											localIdentContext: watch,
 										},
 									},
 									preProcessor: 'less-loader',
@@ -577,6 +589,7 @@ export default ({
 		},
 
 		plugins: [
+			new RemoveEmptyScriptsPlugin(),
 			new webpack.ProgressPlugin(),
 			new CleanWebpackPlugin(),
 			isEnvProduction &&
@@ -613,6 +626,11 @@ export default ({
 			// 		return data;
 			// 	},
 			// }),
+
+			writeStatsJson && new StatoscopeWebpackPlugin({
+				saveStatsTo: projectRoot + '/bundle-stats.json',
+				saveOnlyStats: true,
+			}),
 
 			isEnvDevelopment && hot && new webpack.HotModuleReplacementPlugin(),
 
