@@ -53,13 +53,6 @@ function build(config, configW, previousFileSizes) {
 				warnings: messages.warnings,
 			};
 
-			// if (config.writeStatsJson) {
-			// 	return bfj
-			// 		.write(config.projectRoot + '/bundle-stats.json', stats.toJson())
-			// 		.then(() => resolve(resolveArgs))
-			// 		.catch((error) => reject(new Error(error)));
-			// }
-
 			return resolve(resolveArgs);
 		});
 	});

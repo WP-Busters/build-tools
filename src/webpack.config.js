@@ -8,7 +8,6 @@ import MiniCssExtractPlugin from 'mini-css-extract-plugin';
 import { createRequire } from 'module';
 import path from 'path';
 import SpeedMeasurePlugin from 'speed-measure-webpack-plugin';
-import { extendDefaultPlugins } from 'svgo';
 import TerserPlugin from 'terser-webpack-plugin';
 import webpack from 'webpack';
 import RemoveEmptyScriptsPlugin from 'webpack-remove-empty-scripts';
@@ -638,24 +637,7 @@ export default ({
 				useReactRefresh &&
 				new ReactRefreshWebpackPlugin({
 					exclude: [/node_modules/],
-					overlay: {
-						// entry: require.resolve('@pmmmwh/react-refresh-webpack-plugin/client/ErrorOverlayEntry'),
-						// module: require.resolve('@pmmmwh/react-refresh-webpack-plugin/overlay'),
-
-						// entry: require.resolve('./webpackHotDevClient.cjs'),
-						// entry: require.resolve('react-dev-utils/webpackHotDevClient'),
-						// The expected exports are slightly different from what the overlay exports,
-						// so an interop is included here to enable feedback on module-level errors.
-						// module: require.resolve('react-dev-utils/refreshOverlayInterop'),
-						// Since we ship a custom dev client and overlay integration,
-						// the bundled socket handling logic can be eliminated.
-						// sockIntegration: false,
-						sockIntegration: 'wds',
-						sockProtocol: 'ws',
-						sockPath: '/ws',
-						sockHost: host,
-						sockPort: port,
-					},
+					overlay: false,
 				}),
 
 			new webpack.ProvidePlugin({
@@ -682,12 +664,15 @@ export default ({
 						[
 							'svgo',
 							{
-								plugins: extendDefaultPlugins([{ name: 'removeViewBox', active: false }, {
-                  name: "addAttributesToSVGElement",
-                  params: {
-                    attributes: [{ xmlns: "http://www.w3.org/2000/svg" }],
-                  },
-                }]),
+								plugins: [
+                                    { name: 'removeViewBox', active: false }, 
+                                    {
+                                        name: "addAttributesToSVGElement",
+                                        params: {
+                                            attributes: [{ xmlns: "http://www.w3.org/2000/svg" }],
+                                        },
+                                    }
+                                ],
 							},
 						],
 					],

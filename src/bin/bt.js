@@ -1,5 +1,7 @@
 #!/usr/bin/env node
 
+// process.traceDeprecation = true;
+
 import path from "path";
 import { fileURLToPath } from 'url';
 import { cli } from '../cli.js';

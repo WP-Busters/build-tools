@@ -1,12 +1,18 @@
+
 import chalk from 'chalk';
 import cors from 'cors';
 import del from 'del';
+import { mapValues } from 'lodash-es';
+import { createRequire } from 'module';
 import errorOverlayMiddleware from 'react-dev-utils/errorOverlayMiddleware.js';
 import webpack from 'webpack';
 import WebpackDevServer from 'webpack-dev-server';
 import formatWebpackMessages from './formatWebpackMessages.cjs';
 import { prepareConfig } from './prepareConfig.js';
 import { clearConsole } from './utils.js';
+
+
+const require = createRequire(import.meta.url);
 
 const createComplier = (config) => {
 	// "Compiler" is a low-level interface to webpack.
@@ -84,7 +90,7 @@ export const commandWatch = async () => {
 		// useReactRefresh: true,
 	});
 
-	//webPackConfig.entry = mapValues(webPackConfig.entry, (p) => [require.resolve('react-refresh/runtime'), p]);
+	webPackConfig.entry = mapValues(webPackConfig.entry, (p) => [require.resolve('react-refresh/runtime'), p]);
 
 	await del([config.output]);
 
@@ -92,15 +98,8 @@ export const commandWatch = async () => {
 	const serverConfig = {
 		host: config.host,
         port: config.port,
-        // headers: {
-        //     'Access-Control-Allow-Origin': '*',
-        //     'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, PATCH, OPTIONS',
-        //     'Access-Control-Allow-Headers': 'Origin, X-Requested-With, Content-Type, Accept, Authorization'
-        // },
-        // static: {
-        //     directory: path.resolve(options.BUILD_DIR),
-        // },
 		static: false,
+		
         devMiddleware: {
             stats: {
                 colors: true,
@@ -115,10 +114,9 @@ export const commandWatch = async () => {
 				return /.*(?<!hot-update)\.(css|js|gif|jpe?g|png|txt|json)(\.map)?$/.test(filePath);
 			},
         },
-        historyApiFallback: true,
+		
+        historyApiFallback: false,
         open: false,
-		
-		
 		allowedHosts: "all",
 		
 		hot: config.hot ? 'only' : false,
@@ -127,7 +125,7 @@ export const commandWatch = async () => {
 		webSocketServer: "ws",
 		
 		server: {
-			type: "spdy",
+			type: "https",
 			options: {
 				cert: '/Users/dk/Mine/sites/caddy-env/.mkcert/cert.pem',
 				key: '/Users/dk/Mine/sites/caddy-env/.mkcert/key.pem',
