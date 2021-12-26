@@ -252,6 +252,7 @@ function tryApplyUpdates(onHotUpdateSuccess) {
 		const hasReactRefresh = process.env.FAST_REFRESH;
 		const wantsForcedReload = err || !updatedModules || hadRuntimeError;
 		// React refresh can handle hot-reloading over errors.
+		
 		if (!hasReactRefresh && wantsForcedReload) {
 			window.location.reload();
 			return;
@@ -269,6 +270,7 @@ function tryApplyUpdates(onHotUpdateSuccess) {
 	}
 
 	// https://webpack.github.io/docs/hot-module-replacement.html#check
+	
 	var result = module.hot.check(/* autoApply */ true, handleApplyUpdates);
 
 	// // webpack 2 returns a Promise instead of invoking a callback

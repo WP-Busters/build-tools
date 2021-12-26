@@ -12,7 +12,6 @@ import { extendDefaultPlugins } from 'svgo';
 import TerserPlugin from 'terser-webpack-plugin';
 import webpack from 'webpack';
 import RemoveEmptyScriptsPlugin from 'webpack-remove-empty-scripts';
-import { RuntimePublicPath } from './RuntimePublicPath.js';
 import { WpCustomDependencyExtractionWebpackPlugin } from './WpCustomDependencyExtractionWebpackPlugin.js';
 
 const require = createRequire(import.meta.url);
@@ -107,7 +106,7 @@ const getStyleLoaders = ({
 							// Adds PostCSS Normalize as the reset css with default options,
 							// so that it honors browserslist config in package.json
 							// which in turn let's users customize the target behavior as per their needs.
-							require('postcss-normalize')(),
+							// require('postcss-normalize')(),
 							...postCssPlugins,
 						];
 						// console.log(p);
@@ -141,12 +140,14 @@ const getStyleLoaders = ({
 	return loaders;
 };
 
-const getBabelLoader = ({ isEnvDevelopment, isEnvProduction, useReactRefresh, hasJsxRuntime }) => [
+const getBabelLoader = ({ isEnvDevelopment, projectRoot, isEnvProduction, useReactRefresh, hasJsxRuntime }) => [
 	{
 		loader: require.resolve('babel-loader'),
 		options: {
 			// customize: require.resolve('babel-preset-react-app/webpack-overrides'),
-			cacheDirectory: true,
+			// cacheDirectory: path.resolve(projectRoot, 'node_modules', '.cache_custom/js'),
+			// cacheIdentifier: isEnvProduction ? 'prod' : 'dev',
+
 			babelrc: false,
 			configFile: false,
 
@@ -172,7 +173,7 @@ const getBabelLoader = ({ isEnvDevelopment, isEnvProduction, useReactRefresh, ha
 
 			plugins: [
 				//require.resolve('@babel/plugin-transform-modules-commonjs'),
-				require.resolve('@reatom/babel-plugin'),
+				// require.resolve('@reatom/babel-plugin'),
 				// require.resolve('babel-plugin-styled-components'),
 				[
 					require.resolve('babel-plugin-transform-imports'),
@@ -358,6 +359,7 @@ export default ({
 								isEnvDevelopment,
 								useReactRefresh,
 								hasJsxRuntime,
+								projectRoot,
 							}),
 						},
 						{
@@ -381,7 +383,7 @@ export default ({
 						},
 
 						{
-							test: [/\.postcss$/],
+							test: [/\.(post|p)css$/],
 							use: getStyleLoaders({
 								watch,
 								isEnvDevelopment,
@@ -632,8 +634,6 @@ export default ({
 				saveOnlyStats: true,
 			}),
 
-			isEnvDevelopment && hot && new webpack.HotModuleReplacementPlugin(),
-
 			isEnvDevelopment &&
 				useReactRefresh &&
 				new ReactRefreshWebpackPlugin({
@@ -642,7 +642,7 @@ export default ({
 						// entry: require.resolve('@pmmmwh/react-refresh-webpack-plugin/client/ErrorOverlayEntry'),
 						// module: require.resolve('@pmmmwh/react-refresh-webpack-plugin/overlay'),
 
-						entry: require.resolve('./webpackHotDevClient.cjs'),
+						// entry: require.resolve('./webpackHotDevClient.cjs'),
 						// entry: require.resolve('react-dev-utils/webpackHotDevClient'),
 						// The expected exports are slightly different from what the overlay exports,
 						// so an interop is included here to enable feedback on module-level errors.
@@ -651,6 +651,8 @@ export default ({
 						// the bundled socket handling logic can be eliminated.
 						// sockIntegration: false,
 						sockIntegration: 'wds',
+						sockProtocol: 'ws',
+						sockPath: '/ws',
 						sockHost: host,
 						sockPort: port,
 					},
@@ -701,7 +703,8 @@ export default ({
 					context: watch,
 					failOnError: true,
 					failOnWarning: false,
-					// cache: true,
+					cache: true,
+					// cacheDirectory: path.resolve(projectRoot, 'node_modules', '.cache_custom/eslintcache'),
 					// cacheLocation: path.resolve(projectRoot, 'node_modules', '.cache/.eslintcache'),
 					// ESLint class options
 					cwd: projectRoot,
@@ -719,9 +722,9 @@ export default ({
 
 			// isEnvProduction &&
 				// runtimePublicPath &&
-				new RuntimePublicPath({
-					publicPath: runtimePublicPath,
-				}),
+				// new RuntimePublicPath({
+				// 	publicPath: runtimePublicPath,
+				// }),
 		].filter(Boolean),
 
 		// Some libraries import Node modules but don't use them in the browser.

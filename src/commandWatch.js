@@ -90,53 +90,84 @@ export const commandWatch = async () => {
 
 	const compiler = createComplier(webPackConfig);
 	const serverConfig = {
-		writeToDisk: (filePath) => {
-			return /.*(?<!hot-update)\.(css|js|gif|jpe?g|png|txt|json)(\.map)?$/.test(filePath);
-		},
-		disableHostCheck: true,
-		compress: true,
-		hot: config.hot,
-
-		sockHost: config.host,
-		sockPort: config.port,
-
-		contentBase: config.output,
-		transportMode: 'ws',
-		injectClient: false,
-		historyApiFallback: true,
-		quiet: true,
-
-		https: {
-			cert: '/Users/dk/Library/Application Support/mkcert/_wildcard.wp.loc+4.pem',
-			key: '/Users/dk/Library/Application Support/mkcert/_wildcard.wp.loc+4-key.pem',
-		},
 		host: config.host,
-		overlay: false,
-		clientLogLevel: 'none',
-		watchOptions: {
-			ignored: /node_modules|.astroturf/,
-		},
+        port: config.port,
+        // headers: {
+        //     'Access-Control-Allow-Origin': '*',
+        //     'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, PATCH, OPTIONS',
+        //     'Access-Control-Allow-Headers': 'Origin, X-Requested-With, Content-Type, Accept, Authorization'
+        // },
+        // static: {
+        //     directory: path.resolve(options.BUILD_DIR),
+        // },
+		static: false,
+        devMiddleware: {
+            stats: {
+                colors: true,
+                hash: false,
+                timings: false,
+                chunks: true,
+                chunkModules: false,
+                modules: false,
+                children: false,
+            },
+			writeToDisk: (filePath) => {
+				return /.*(?<!hot-update)\.(css|js|gif|jpe?g|png|txt|json)(\.map)?$/.test(filePath);
+			},
+        },
+        historyApiFallback: true,
+        open: false,
+		
+		
+		allowedHosts: "all",
+		
+		hot: config.hot ? 'only' : false,
 
-		before(app, server) {
-			app.use(cors());
-			// Keep `evalSourceMapMiddleware` and `errorOverlayMiddleware`
-			// middlewares before `redirectServedPath` otherwise will not have any effect
-			// This lets us fetch source contents from webpack for the error overlay
-			// app.use(evalSourceMapMiddleware(server));
-			// This lets us open files from the runtime error overlay.
-			app.use(errorOverlayMiddleware());
+		
+		webSocketServer: "ws",
+		
+		server: {
+			type: "spdy",
+			options: {
+				cert: '/Users/dk/Mine/sites/caddy-env/.mkcert/cert.pem',
+				key: '/Users/dk/Mine/sites/caddy-env/.mkcert/key.pem',
+			}
 		},
+		watchFiles: {
+			options: {
+				ignored: /node_modules|.astroturf/,
+			}
+		},
+		
+		client: {
+			webSocketURL: {
+				hostname: config.host,
+				pathname: "/ws",
+				port: config.port,
+			},
+			logging: "warn",
+			overlay: false,
+			progress: true,
+		  },
+		
+		  setupMiddlewares: (middlewares, devServer) => {
+			if (!devServer) {
+			  throw new Error('webpack-dev-server is not defined');
+			}
+
+			devServer.app.use(cors());
+			// This lets us open files from the runtime error overlay.
+			devServer.app.use(errorOverlayMiddleware());
+
+			return middlewares;
+		}
 	};
 
-	const devServer = new WebpackDevServer(compiler, serverConfig);
-	devServer.listen(config.port, config.host, (err) => {
-		if (err) {
-			return console.log(err);
-		}
-
+	const devServer = new WebpackDevServer(serverConfig, compiler);
+	devServer.startCallback(() => {
 		// 	clearConsole();
 
-		console.log(chalk.cyan('Starting the development server...\n'));
+		console.log(chalk.cyan('\n\nStarting the development server...'));
 	});
 
 	['SIGINT', 'SIGTERM'].forEach(function (sig) {
