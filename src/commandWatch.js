@@ -5,9 +5,9 @@ import del from 'del';
 import { mapValues } from 'lodash-es';
 import { createRequire } from 'module';
 import errorOverlayMiddleware from 'react-dev-utils/errorOverlayMiddleware.js';
+import formatWebpackMessages from 'react-dev-utils/formatWebpackMessages.js';
 import webpack from 'webpack';
 import WebpackDevServer from 'webpack-dev-server';
-import formatWebpackMessages from './formatWebpackMessages.cjs';
 import { prepareConfig } from './prepareConfig.js';
 import { clearConsole } from './utils.js';
 
@@ -48,16 +48,23 @@ const createComplier = (config) => {
 		// them in a readable focused way.
 		// We only construct the warnings and errors for speed:
 		// https://github.com/facebook/create-react-app/issues/4492#issuecomment-421959548
-		const statsData = stats.toJson({
+		const serializedStats = stats.toJson({
 			all: false,
 			warnings: true,
 			errors: true,
 		});
 
-		const messages = formatWebpackMessages(statsData);
+		// is due to react-dev-utils not yet being compatible with webpack 5. This
+		// may be possible to remove (just passing the serialized stats object
+		// directly into the format function) after a new release of react-dev-utils
+		// has been made available.
+		const messages = formatWebpackMessages({
+			errors: serializedStats.errors?.map(e => (e.message ? e.message : e)),
+			warnings: serializedStats.warnings?.map(e => (e.message ? e.message : e)),
+		  });
 		const isSuccessful = !messages.errors.length && !messages.warnings.length;
 		if (isSuccessful) {
-			console.log(chalk.green('\nCompiled successfully!'));
+			console.log(chalk.green('\n\nCompiled successfully!'));
 		}
 
 		// If errors exist, only show errors.
@@ -67,14 +74,14 @@ const createComplier = (config) => {
 			if (messages.errors.length > 1) {
 				messages.errors.length = 1;
 			}
-			console.log(chalk.red('Failed to compile.\n'));
+			console.log(chalk.red('\n\nFailed to compile.\n'));
 			console.log(messages.errors.join('\n\n'));
 			return;
 		}
 
 		// Show warnings if no errors were found.
 		if (messages.warnings.length) {
-			console.log(chalk.yellow('Compiled with warnings.\n'));
+			console.log(chalk.yellow('\n\nCompiled with warnings.\n'));
 			console.log(messages.warnings.join('\n\n'));
 		}
 	});

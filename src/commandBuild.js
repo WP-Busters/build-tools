@@ -6,7 +6,7 @@ import {
 } from 'react-dev-utils/FileSizeReporter.js';
 import printBuildError from 'react-dev-utils/printBuildError.js';
 import webpack from 'webpack';
-import formatWebpackMessages from './formatWebpackMessages.cjs';
+import formatWebpackMessages from './__formatWebpackMessages.cjs';
 import { prepareConfig } from './prepareConfig.js';
 
 function build(config, configW, previousFileSizes) {

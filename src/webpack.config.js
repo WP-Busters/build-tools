@@ -647,36 +647,9 @@ export default ({
 			new webpack.DefinePlugin({
 				'process.env.NODE_ENV': JSON.stringify(process.env.NODE_ENV),
 				'process.env.WDS_SOCKET_HOST': JSON.stringify(host),
+				'process.env.WDS_SOCKET_PATH': JSON.stringify('/ws'),
 				'process.env.WDS_SOCKET_PORT': JSON.stringify(port),
 				__RSUITE_CLASSNAME_PREFIX__: JSON.stringify('bust-'),
-			}),
-
-			new ImageMinimizerPlugin({
-				minimizerOptions: {
-					// Before using imagemin plugins make sure you have added them in `package.json` (`devDependencies`) and installed them
-
-					// Lossless optimization with custom option
-					// Feel free to experiment with options for better result for you
-					plugins: [
-						['gifsicle', { interlaced: true }],
-						['jpegtran', { progressive: true }],
-						['optipng', { optimizationLevel: 5 }],
-						[
-							'svgo',
-							{
-								plugins: [
-                                    { name: 'removeViewBox', active: false }, 
-                                    {
-                                        name: "addAttributesToSVGElement",
-                                        params: {
-                                            attributes: [{ xmlns: "http://www.w3.org/2000/svg" }],
-                                        },
-                                    }
-                                ],
-							},
-						],
-					],
-				},
 			}),
 
 			!disableESLintPlugin &&
@@ -767,6 +740,35 @@ export default ({
 					},
 					extractComments: false,
 				}),
+
+
+				new ImageMinimizerPlugin({
+					minimizer: {
+						implementation: ImageMinimizerPlugin.imageminMinify,
+						options: {
+							plugins: [
+								['gifsicle', { interlaced: true }],
+								['jpegtran', { progressive: true }],
+								['optipng', { optimizationLevel: 5 }],
+								[
+									'svgo',
+									{
+										plugins: [
+											{ name: 'removeViewBox', active: false }, 
+											{
+												name: "addAttributesToSVGElement",
+												params: {
+													attributes: [{ xmlns: "http://www.w3.org/2000/svg" }],
+												},
+											}
+										],
+									},
+								],
+							],
+						}
+					},
+				}),
+
 
 				isEnvProduction &&
 					new CssMinimizerPlugin({
