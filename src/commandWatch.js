@@ -4,7 +4,6 @@ import cors from 'cors';
 import del from 'del';
 import { mapValues } from 'lodash-es';
 import { createRequire } from 'module';
-import errorOverlayMiddleware from 'react-dev-utils/errorOverlayMiddleware.js';
 import formatWebpackMessages from 'react-dev-utils/formatWebpackMessages.js';
 import webpack from 'webpack';
 import WebpackDevServer from 'webpack-dev-server';
@@ -109,13 +108,19 @@ export const commandWatch = async () => {
 		
         devMiddleware: {
             stats: {
+				children: false,
+				all: false,
+				entrypoints: true,
+				warnings: false,
+				errors: false,
+				hash: false,
+				timings: true,
+				errorDetails: true,
+				builtAt: true,
+				
                 colors: true,
-                hash: false,
-                timings: false,
-                chunks: true,
+                chunks: false,
                 chunkModules: false,
-                modules: false,
-                children: false,
             },
 			writeToDisk: (filePath) => {
 				return /.*(?<!hot-update)\.(css|js|gif|jpe?g|png|txt|json)(\.map)?$/.test(filePath);
@@ -150,8 +155,8 @@ export const commandWatch = async () => {
 				pathname: "/ws",
 				port: config.port,
 			},
-			logging: "warn",
-			overlay: false,
+			logging: "none",
+			overlay: true,
 			progress: true,
 		  },
 		
@@ -161,9 +166,7 @@ export const commandWatch = async () => {
 			}
 
 			devServer.app.use(cors());
-			// This lets us open files from the runtime error overlay.
-			devServer.app.use(errorOverlayMiddleware());
-
+			
 			return middlewares;
 		}
 	};

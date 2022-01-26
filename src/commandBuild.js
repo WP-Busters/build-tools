@@ -4,9 +4,9 @@ import {
 	measureFileSizesBeforeBuild,
 	printFileSizesAfterBuild
 } from 'react-dev-utils/FileSizeReporter.js';
+import formatWebpackMessages from 'react-dev-utils/formatWebpackMessages.js';
 import printBuildError from 'react-dev-utils/printBuildError.js';
 import webpack from 'webpack';
-import formatWebpackMessages from './__formatWebpackMessages.cjs';
 import { prepareConfig } from './prepareConfig.js';
 
 function build(config, configW, previousFileSizes) {
@@ -34,9 +34,20 @@ function build(config, configW, previousFileSizes) {
 					warnings: [],
 				});
 			} else {
-				messages = formatWebpackMessages(
-					stats.toJson({ all: false, warnings: true, errors: true }),
-				);
+				const serializedStats = stats.toJson({
+					all: false,
+					warnings: true,
+					errors: true,
+				});
+		
+				// is due to react-dev-utils not yet being compatible with webpack 5. This
+				// may be possible to remove (just passing the serialized stats object
+				// directly into the format function) after a new release of react-dev-utils
+				// has been made available.
+				messages = formatWebpackMessages({
+					errors: serializedStats.errors?.map(e => (e.message ? e.message : e)),
+					warnings: serializedStats.warnings?.map(e => (e.message ? e.message : e)),
+				});
 			}
 			if (messages.errors.length) {
 				// Only keep the first error. Others are often indicative

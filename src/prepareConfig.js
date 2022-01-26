@@ -26,6 +26,7 @@ export const prepareConfig = async (c) => {
 		runtimePublicPath: false,
 		hot: true,
 		disableESLintPlugin: false,
+		postCssPlugins: [],
 		...(c || {}),
 		...(typeof userConfig === 'function' ? userConfig() : userConfig),
 	};

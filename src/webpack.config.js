@@ -105,7 +105,7 @@ const getStyleLoaders = ({
 							// Adds PostCSS Normalize as the reset css with default options,
 							// so that it honors browserslist config in package.json
 							// which in turn let's users customize the target behavior as per their needs.
-							// require('postcss-normalize')(),
+							require('postcss-normalize')(),
 							...postCssPlugins,
 						];
 						// console.log(p);
@@ -250,6 +250,7 @@ export default ({
 	entry,
 	output,
 	packageJson,
+	postCssPlugins,
 	writeStatsJson,
 	watch,
 	useReactRefresh,
@@ -272,9 +273,7 @@ export default ({
 	const smp = speadMeaurePlugin ? new SpeedMeasurePlugin() : { wrap: (e) => e };
 
 	return smp.wrap({
-		// target: 'web',
 		target: ['web', 'es2016'],
-		// target: ['web', 'es5'],
 
 		mode: isEnvProduction ? 'production' : 'development',
 
@@ -321,10 +320,6 @@ export default ({
 				: isEnvDevelopment &&
 				  ((info) => path.resolve(info.absoluteResourcePath).replace(/\\/g, '/')),
 
-			// this defaults to 'window', but by setting it to 'this' then
-			// module chunks which are built will work in web workers as well.
-			globalObject: 'this',
-
 			// Prevents conflicts when multiple webpack runtimes (from different apps)
 			// are used on the same page.
 			// @see https://github.com/WordPress/gutenberg/issues/23607
@@ -368,6 +363,7 @@ export default ({
 								watch,
 								isEnvDevelopment,
 								isEnvProduction,
+								postCssPlugins,
 								cssOptions: {
 									importLoaders: 1,
 									styledTag: 'styledAstro',
@@ -387,6 +383,7 @@ export default ({
 								watch,
 								isEnvDevelopment,
 								isEnvProduction,
+								postCssPlugins,
 								cssOptions: {
 									importLoaders: 2,
 									sourceMap: isEnvDevelopment,
@@ -407,6 +404,7 @@ export default ({
 									watch,
 									isEnvDevelopment,
 									isEnvProduction,
+									postCssPlugins,
 									cssOptions: {
 										importLoaders: 2,
 										sourceMap: isEnvDevelopment,
@@ -431,6 +429,7 @@ export default ({
 									watch,
 									isEnvDevelopment,
 									isEnvProduction,
+									postCssPlugins,
 									cssOptions: {
 										importLoaders: 2,
 										sourceMap: isEnvDevelopment,
@@ -454,6 +453,7 @@ export default ({
 								watch,
 								isEnvDevelopment,
 								isEnvProduction,
+								postCssPlugins,
 								cssOptions: {
 									importLoaders: 1,
 									sourceMap: isEnvDevelopment,
@@ -481,6 +481,7 @@ export default ({
 									watch,
 									isEnvDevelopment,
 									isEnvProduction,
+									postCssPlugins,
 									cssOptions: {
 										importLoaders: 1,
 										sourceMap: isEnvDevelopment,
@@ -516,6 +517,7 @@ export default ({
 									watch,
 									isEnvDevelopment,
 									isEnvProduction,
+									postCssPlugins,
 									cssOptions: {
 										importLoaders: 2,
 										sourceMap: isEnvDevelopment,
@@ -545,8 +547,13 @@ export default ({
 								{
 									loader: require.resolve('@svgr/webpack'),
 									options: {
-										titleProp: true,
+										prettier: false,
 										svgo: false,
+										svgoConfig: {
+											plugins: [{ removeViewBox: false }],
+										},
+										titleProp: true,
+										ref: true,
 									},
 								},
 								require.resolve('url-loader'),
@@ -593,6 +600,7 @@ export default ({
 			new RemoveEmptyScriptsPlugin(),
 			new webpack.ProgressPlugin(),
 			new CleanWebpackPlugin(),
+			
 			isEnvProduction &&
 				new MiniCssExtractPlugin({
 					filename: '[name].[contenthash:8].css',
@@ -601,32 +609,6 @@ export default ({
 				}),
 
 			new WpCustomDependencyExtractionWebpackPlugin(),
-			// new WebpackManifestPlugin({
-			// 	fileName: 'asset-manifest.json',
-			// 	generate: (seed, files, entrypoints) => {
-			// 		const data = {};
-
-			// 		_.each(entrypoints, (entrypoint, entry) => {
-			// 			if (data[entry] === undefined) {
-			// 				data[entry] = {
-			// 					dependencies: [],
-			// 					files: [],
-			// 				};
-			// 			}
-
-			// 			_.each(entrypoint, (chunk) => {
-			// 				const file = _.find(files, (file) => file.path.endsWith(chunk));
-
-			// 				if (file) {
-			// 					data[entry].files.push(chunk);
-			// 					// data[entry].files[file.name] = chunk;
-			// 				}
-			// 			});
-			// 		});
-
-			// 		return data;
-			// 	},
-			// }),
 
 			writeStatsJson && new StatoscopeWebpackPlugin({
 				saveStatsTo: projectRoot + '/bundle-stats.json',
@@ -655,7 +637,7 @@ export default ({
 			!disableESLintPlugin &&
 				new ESLintPlugin({
 					extensions: ['js', 'mjs', 'cjs', 'jsx', 'ts', 'tsx'],
-					formatter: require.resolve('eslint-formatter-pretty'),
+					formatter: require.resolve('react-dev-utils/eslintFormatter'),
 					eslintPath: require.resolve('eslint'),
 					emitWarning: isEnvDevelopment,
 					context: watch,
@@ -663,7 +645,7 @@ export default ({
 					failOnWarning: false,
 					cache: true,
 					// cacheDirectory: path.resolve(projectRoot, 'node_modules', '.cache_custom/eslintcache'),
-					// cacheLocation: path.resolve(projectRoot, 'node_modules', '.cache/.eslintcache'),
+					cacheLocation: path.resolve(projectRoot, 'node_modules', '.cache/.eslintcache'),
 					// ESLint class options
 					cwd: projectRoot,
 					resolvePluginsRelativeTo: builderRoot,
@@ -691,6 +673,16 @@ export default ({
 		// Turn off performance processing because we utilize
 		// our own hints via the FileSizeReporter
 		performance: false,
+
+		cache: {
+			type: 'filesystem',
+			store: 'pack',
+    		allowCollectingMemory: true,
+		  },
+
+		infrastructureLogging: {
+			level: 'none',
+		},
 
 		optimization: {
 			minimize: isEnvProduction,
