@@ -15,8 +15,7 @@ import { WpCustomDependencyExtractionWebpackPlugin } from './WpCustomDependencyE
 
 const require = createRequire(import.meta.url);
 
-const StatoscopeWebpackPlugin = StatoscopeWebpackPluginImport.default
-
+const StatoscopeWebpackPlugin = StatoscopeWebpackPluginImport.default;
 
 /**
  * Gets a unique identifier for the webpack build to avoid multiple webpack
@@ -139,7 +138,15 @@ const getStyleLoaders = ({
 	return loaders;
 };
 
-const getBabelLoader = ({ isEnvDevelopment, projectRoot, isEnvProduction, useReactRefresh, hasJsxRuntime }) => [
+const getBabelLoader = ({
+	isEnvDevelopment,
+	projectRoot,
+	isEnvProduction,
+	useReatom,
+	useEffector,
+	useReactRefresh,
+	hasJsxRuntime,
+}) => [
 	{
 		loader: require.resolve('babel-loader'),
 		options: {
@@ -172,7 +179,19 @@ const getBabelLoader = ({ isEnvDevelopment, projectRoot, isEnvProduction, useRea
 
 			plugins: [
 				//require.resolve('@babel/plugin-transform-modules-commonjs'),
-				// require.resolve('@reatom/babel-plugin'),
+				useEffector && require.resolve('effector/babel-plugin'),
+				useEffector &&
+					isEnvDevelopment && [
+						require.resolve('effector-logger/babel-plugin'),
+						{
+							// inspector: true,
+							// effector: {
+							// 	reactSsr: false,
+							// 	// factories: ['shared/lib/effector-timer', 'effector-forms'],
+							// },
+						},
+					],
+				useReatom && require.resolve('@reatom/babel-plugin'),
 				// require.resolve('babel-plugin-styled-components'),
 				[
 					require.resolve('babel-plugin-transform-imports'),
@@ -261,6 +280,8 @@ export default ({
 	disableESLintPlugin,
 	runtimePublicPath,
 	usePreact,
+	useEffector,
+	useReatom,
 	hot,
 }) => {
 	const isEnvDevelopment = !isEnvProduction;
@@ -293,7 +314,7 @@ export default ({
 					: {}),
 
 				process: require.resolve('process/browser'),
-				'tslib': require.resolve('tslib'),
+				tslib: require.resolve('tslib'),
 				// '@babel/runtime': require.resolve('@babel/runtime'),
 				'react-fast-compare': require.resolve('fast-deep-equal'),
 				...(isEnvProductionProfile && {
@@ -352,6 +373,8 @@ export default ({
 								isEnvProduction,
 								isEnvDevelopment,
 								useReactRefresh,
+								useReatom,
+								useEffector,
 								hasJsxRuntime,
 								projectRoot,
 							}),
@@ -600,20 +623,21 @@ export default ({
 			new RemoveEmptyScriptsPlugin(),
 			new webpack.ProgressPlugin(),
 			new CleanWebpackPlugin(),
-			
+
 			isEnvProduction &&
 				new MiniCssExtractPlugin({
 					filename: '[name].[contenthash:8].css',
 					chunkFilename: '[name].[contenthash:8].chunk.css',
-					ignoreOrder: true // Enable to remove warnings about conflicting order
+					ignoreOrder: true, // Enable to remove warnings about conflicting order
 				}),
 
 			new WpCustomDependencyExtractionWebpackPlugin(),
 
-			writeStatsJson && new StatoscopeWebpackPlugin({
-				saveStatsTo: projectRoot + '/bundle-stats.json',
-				saveOnlyStats: true,
-			}),
+			writeStatsJson &&
+				new StatoscopeWebpackPlugin({
+					saveStatsTo: projectRoot + '/bundle-stats.json',
+					saveOnlyStats: true,
+				}),
 
 			isEnvDevelopment &&
 				useReactRefresh &&
@@ -661,10 +685,10 @@ export default ({
 				}),
 
 			// isEnvProduction &&
-				// runtimePublicPath &&
-				// new RuntimePublicPath({
-				// 	publicPath: runtimePublicPath,
-				// }),
+			// runtimePublicPath &&
+			// new RuntimePublicPath({
+			// 	publicPath: runtimePublicPath,
+			// }),
 		].filter(Boolean),
 
 		// Some libraries import Node modules but don't use them in the browser.
@@ -677,8 +701,8 @@ export default ({
 		cache: {
 			type: 'filesystem',
 			store: 'pack',
-    		allowCollectingMemory: true,
-		  },
+			allowCollectingMemory: true,
+		},
 
 		infrastructureLogging: {
 			level: 'none',
@@ -733,7 +757,6 @@ export default ({
 					extractComments: false,
 				}),
 
-
 				new ImageMinimizerPlugin({
 					minimizer: {
 						implementation: ImageMinimizerPlugin.imageminMinify,
@@ -746,21 +769,20 @@ export default ({
 									'svgo',
 									{
 										plugins: [
-											{ name: 'removeViewBox', active: false }, 
+											{ name: 'removeViewBox', active: false },
 											{
-												name: "addAttributesToSVGElement",
+												name: 'addAttributesToSVGElement',
 												params: {
-													attributes: [{ xmlns: "http://www.w3.org/2000/svg" }],
+													attributes: [{ xmlns: 'http://www.w3.org/2000/svg' }],
 												},
-											}
+											},
 										],
 									},
 								],
 							],
-						}
+						},
 					},
 				}),
-
 
 				isEnvProduction &&
 					new CssMinimizerPlugin({

@@ -19,6 +19,8 @@ export const prepareConfig = async (c) => {
 		watch: './src',
 		projectRoot: './',
 		usePreact: false,
+		useReatom: false,
+		useEffector: false,
 		writeStatsJson: false,
 		isEnvProduction: false,
 		isEnvProductionProfile: false,

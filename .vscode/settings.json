@@ -1,18 +1,19 @@
 {
-  "typescript.tsdk": "node_modules/typescript/lib",
-  "[javascript]": {
-    "editor.formatOnSave": true
-  },
-  "search.exclude": {
-    "**/media-plus/assets": true
-},
-  "[javascriptreact]": {
-    "editor.formatOnSave": true
-  },
-  "[typescript]": {
-    "editor.formatOnSave": true
-  },
-  "[typescriptreact]": {
-    "editor.formatOnSave": true
-  }
+	"editor.formatOnSave": true,
+	"typescript.tsdk": "node_modules/typescript/lib",
+	"[javascript]": {
+		"editor.formatOnSave": true
+	},
+	"search.exclude": {
+		"**/media-plus/assets": true
+	},
+	"[javascriptreact]": {
+		"editor.formatOnSave": true
+	},
+	"[typescript]": {
+		"editor.formatOnSave": true
+	},
+	"[typescriptreact]": {
+		"editor.formatOnSave": true
+	}
 }
