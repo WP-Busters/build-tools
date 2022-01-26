@@ -139,8 +139,8 @@ export const commandWatch = async () => {
 		server: {
 			type: "https",
 			options: {
-				cert: '/Users/dk/Mine/sites/caddy-env/.mkcert/cert.pem',
-				key: '/Users/dk/Mine/sites/caddy-env/.mkcert/key.pem',
+				cert: '/Users/dk/.mkcert/cert.pem',
+				key: '/Users/dk/.mkcert/key.pem',
 			}
 		},
 		watchFiles: {
@@ -150,6 +150,7 @@ export const commandWatch = async () => {
 		},
 		
 		client: {
+			webSocketTransport: 'ws',
 			webSocketURL: {
 				hostname: config.host,
 				pathname: "/ws",

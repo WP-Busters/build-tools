@@ -13,7 +13,7 @@ export const prepareConfig = async (c) => {
 
 	const config = {
 		port: 3030,
-		host: 'localhost',
+		host: '127.0.0.1',
 		entry: { index: './src/index.js' },
 		output: './build',
 		watch: './src',

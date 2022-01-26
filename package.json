@@ -68,8 +68,8 @@
 		"typescript": "~4.5.4",
 		"url-loader": "~4.1.1",
 		"val-loader": "~4.0.0",
-		"webpack": "~5.65.0",
-		"webpack-dev-server": "~4.7.1",
+		"webpack": "~5.67.0",
+		"webpack-dev-server": "~4.7.3",
 		"webpack-remove-empty-scripts": "~0.7.2"
 	},
 	"devDependencies": {
